@@ -9,8 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\GameCapture.Contracts\GameCapture.Contracts.csproj" />
-    <ProjectReference Include="..\..\GameCapture.Sdk\GameCapture.Sdk.csproj" />
+    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
+    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
   </ItemGroup>
 
   <ItemGroup>

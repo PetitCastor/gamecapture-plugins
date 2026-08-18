@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MissionPlugin/MissionPlugin.csproj" />
+    <Project Path="src/RefineryPlugin/RefineryPlugin.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MissionPlugin.Tests/MissionPlugin.Tests.csproj" />
+    <Project Path="tests/RefineryPlugin.Tests/RefineryPlugin.Tests.csproj" />
+  </Folder>
+</Solution>

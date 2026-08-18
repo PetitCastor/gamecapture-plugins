@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+# No job here pushes, releases, or comments — read-only checkout is all it needs.
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build & Test
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Pinned per 00-OVERVIEW.md's "Plugins-repo CI" decision: this repo consumes GameCapture.Engine
+      # as a released binary, never a source checkout. GAMECAPTURE_ENGINE_PATH is what
+      # GameCapture.Sdk.Testing's EngineLocator.Resolve() reads (see ReplayParityTests in both test
+      # projects) to spawn the real engine for parity comparisons.
+      - name: Download pinned engine release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $engineVersion = (Get-Content engine-version.txt).Trim()
+          gh release download $engineVersion -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip" -D .
+          Expand-Archive -Path "GameCapture.Engine-*-win-x64.zip" -DestinationPath engine
+          $enginePath = (Get-ChildItem -Path engine -Filter "GameCapture.Engine.exe" -Recurse | Select-Object -First 1).FullName
+          if (-not $enginePath) {
+            Write-Error "GameCapture.Engine.exe not found after extracting the pinned release."
+            exit 1
+          }
+          echo "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
+
+      - name: Restore
+        run: dotnet restore GameCapturePlugins.slnx
+
+      - name: Build
+        run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
+
+      # Runs both plugins' unit suites plus the Refinery replay-parity tests against the pinned
+      # engine binary above. Mission parity is a real test in this suite, not omitted — it is
+      # `Skip`-attributed pending the outstanding in-game corpus capture ([USER ACTION], see
+      # 00-OVERVIEW.md), so it reports skipped rather than passed. Do not read a green run here as
+      # proof Mission parity executed; check the skip count.
+      - name: Test
+        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+
+      # A plugin owns parsing and nothing else: it must not name a transport type (Grpc,
+      # RpcException), the wire proto namespace, or the engine assembly. `dotnet build` cannot catch
+      # a re-coupling — a plugin that added `using Grpc.Core;` still compiles against the SDK's public
+      # surface — so this greps plugin SOURCES (.cs only) for the forbidden references. Moved here
+      # from the mono-repo's ci.yml (SPLIT-MANIFEST.md's "Workflow split plan") and re-pointed at
+      # src/ directly: this repo has no src/Plugins/ level, both plugins sit at src/<Plugin>/.
+      - name: Plugin boundary grep gate
+        shell: bash
+        run: |
+          if rg -n -g '*.cs' "using Grpc|RpcException|GameCapture\.Contracts\.Proto|GameCapture\.Engine" src/; then
+            echo "::error::Plugin boundary violation — a plugin references an engine/transport internal (listed above)."
+            exit 1
+          fi
+          echo "Plugin boundary clean: no engine/transport references under src/."

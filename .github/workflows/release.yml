@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]*.[0-9]*.[0-9]*']
+
+# No nuget-release environment gate here — unlike gamecapture-engine, this repo publishes nothing
+# to nuget.org (SPLIT-MANIFEST.md's "Workflow split plan": "plugins repo has no publish target").
+# A tag here only cuts self-contained plugin zips as GitHub release assets.
+jobs:
+  release:
+    name: Build & Release
+    runs-on: windows-latest
+    permissions:
+      contents: write # gh release create; a permissions block zeroes all unlisted scopes.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # Same pinned-engine-binary need as ci.yml, so the tag push re-verifies the parity suites
+      # against the exact engine version this release states it was tested against, not whatever
+      # ran on the last CI push to master.
+      - name: Download pinned engine release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $engineVersion = (Get-Content engine-version.txt).Trim()
+          gh release download $engineVersion -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip" -D .
+          Expand-Archive -Path "GameCapture.Engine-*-win-x64.zip" -DestinationPath engine
+          $enginePath = (Get-ChildItem -Path engine -Filter "GameCapture.Engine.exe" -Recurse | Select-Object -First 1).FullName
+          if (-not $enginePath) {
+            Write-Error "GameCapture.Engine.exe not found after extracting the pinned release."
+            exit 1
+          }
+          echo "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
+          echo "ENGINE_VERSION=$engineVersion" >> $env:GITHUB_ENV
+
+      # Re-verifies rather than trusting whatever CI run happened on this ref — a tag can be pushed
+      # from any commit. Not gated in a required-reviewer environment (see the job comment above),
+      # so this Test step IS the release's only gate: a red suite here fails the job before either
+      # zip step runs.
+      - name: Restore
+        run: dotnet restore GameCapturePlugins.slnx
+
+      - name: Build
+        run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
+
+      - name: Test
+        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+
+      - name: Publish MissionPlugin
+        run: dotnet publish src/MissionPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/MissionPlugin
+
+      - name: Publish RefineryPlugin
+        run: dotnet publish src/RefineryPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/RefineryPlugin
+
+      - name: Archive plugin zips
+        run: |
+          Compress-Archive publish/MissionPlugin/* MissionPlugin-${{ github.ref_name }}-win-x64.zip
+          Compress-Archive publish/RefineryPlugin/* RefineryPlugin-${{ github.ref_name }}-win-x64.zip
+
+      # Release notes explicitly name the engine version this release was tested against —
+      # engine-version.txt is the only thing tying a plugins release to a compatible engine
+      # release, since the two repos version independently and there's no shared version train.
+      - name: Write release notes header
+        shell: pwsh
+        run: |
+          @"
+          Tested against gamecapture-engine $env:ENGINE_VERSION (pinned in engine-version.txt).
+
+          Mission parity is known-skipped in this build's test run pending an in-game corpus
+          capture (see 00-OVERVIEW.md / [USER ACTION] in the source repo this was split from) —
+          Refinery parity ran for real.
+          "@ | Out-File -Encoding utf8 release-notes-header.md
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create ${{ github.ref_name }} `
+            "MissionPlugin-${{ github.ref_name }}-win-x64.zip" `
+            "RefineryPlugin-${{ github.ref_name }}-win-x64.zip" `
+            --notes-file release-notes-header.md --generate-notes

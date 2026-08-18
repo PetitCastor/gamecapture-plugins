@@ -1,0 +1,12 @@
+version: 2
+updates:
+  # GameCapture.Contracts / .Sdk / .Sdk.Testing arrive here as PackageReference — Dependabot opens
+  # a PR whenever a new SDK version is published to nuget.org. Weekly, not daily: these three move
+  # together on the engine repo's own release cadence, not per-commit, so a daily check would mostly
+  # find nothing. Engine pin bumps (engine-version.txt) are NOT covered by this — that file isn't a
+  # NuGet reference Dependabot can see, and 00-OVERVIEW.md's "Plugins-repo CI" decision keeps that
+  # bump a deliberate manual one-line PR, not an automated one.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
