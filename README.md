@@ -33,6 +33,41 @@ Replay-parity tests (`ReplayParityTests` in each `.Tests` project) need
 [`GameCapture.Sdk.Testing`'s `EngineLocator`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md)
 for how to build one locally, or download a release per `engine-version.txt` the way `ci.yml` does.
 
+## Local dev loop
+
+**Running a plugin against a live engine**, whether debugging a plugin change or capturing a new
+corpus (see [engine repo `docs/REPLAY.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md#capturing-a-corpus-in-game)),
+needs an engine process running first — this repo has no engine source, so you get one one of two ways:
+
+- **From a release zip** (matches what CI/release actually run against): download and unzip the
+  version named in `engine-version.txt`, e.g. `gh release download v1.0.0 -R PetitCastor/gamecapture-engine
+  -p "GameCapture.Engine-*-win-x64.zip"`, then run the extracted `GameCapture.Engine.exe` directly.
+- **From a side-by-side clone** (for testing against an unreleased engine change): clone
+  `gamecapture-engine` next to this repo and `dotnet run --project src\GameCapture.Engine`. Not a
+  git submodule — the two repos version independently (nuget.org packages vs. a pinned release tag),
+  so a submodule pointer would fight that rather than help it. Just two sibling directories.
+
+Either way, run the plugin in a second terminal/process — `dotnet run --project src\MissionPlugin`
+or `src\RefineryPlugin` — pointed at the engine's named pipe the way `config.json` already expects.
+There is no multi-startup-project `.sln` here to press one F5 for both: Visual Studio's "multiple
+startup projects" only works within one solution, and the engine now lives in a different repo/solution
+entirely. The VS equivalent of the two-terminal loop above is two VS instances (or one VS + one
+terminal) — open `gamecapture-engine`'s solution in one, this repo's `GameCapturePlugins.slnx` in the
+other, and F5 each independently.
+
+**Testing an SDK-in-progress change** before it's published to nuget.org: pack the engine repo
+locally (`dotnet pack GameCaptureEngine.slnx -c Release -o ../local-feed` from a `gamecapture-engine`
+checkout) and point this repo at that folder instead of nuget.org —
+`dotnet nuget add source ../local-feed --name local-sdk-feed` in a `nuget.config` here, then bump the
+plugin `.csproj` `PackageReference` versions to whatever MinVer derived for the packed build. Revert
+both before committing; this is a scratch loop, not something that ships (same scaffolding TASK-21's
+rehearsal used, not a repo convention).
+
+**Bumping the pinned engine version**: edit `engine-version.txt` to the new `gamecapture-engine` tag,
+open it as its own one-line PR (deliberately manual, see "Compatible engine version" below), and let
+CI's "Download pinned engine release" step confirm the new version's parity suites still pass before
+merging.
+
 ## Known-carried debt: Mission parity is skipped
 
 `MissionPlugin.Tests`'s `ReplayParityTests` is `Skip`-attributed pending an in-game corpus capture
