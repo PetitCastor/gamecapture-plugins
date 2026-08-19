@@ -60,10 +60,20 @@ jobs:
       - name: Publish RefineryPlugin
         run: dotnet publish src/RefineryPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/RefineryPlugin
 
+      # Named files, not `publish/<plugin>/*`: PublishSingleFile bundles the managed assemblies into
+      # the exe but leaves .pdb files loose, and other publish-layout artifacts (docs xml, framework
+      # deps) don't belong in a release zip either. Listing the two files that belong means the
+      # release contents can't drift with the publish layout; the Test-Path guard turns a rename or a
+      # dropped CopyToOutputDirectory into a failed release rather than a silently incomplete zip.
       - name: Archive plugin zips
         run: |
-          Compress-Archive publish/MissionPlugin/* MissionPlugin-${{ github.ref_name }}-win-x64.zip
-          Compress-Archive publish/RefineryPlugin/* RefineryPlugin-${{ github.ref_name }}-win-x64.zip
+          $plugins = @('MissionPlugin', 'RefineryPlugin')
+          foreach ($plugin in $plugins) {
+            $files = "publish/$plugin/$plugin.exe", "publish/$plugin/config.json"
+            $missing = $files | Where-Object { -not (Test-Path $_) }
+            if ($missing) { throw "Missing from publish output: $($missing -join ', ')" }
+            Compress-Archive -Path $files -DestinationPath "$plugin-${{ github.ref_name }}-win-x64.zip"
+          }
 
       # Release notes explicitly name the engine version this release was tested against —
       # engine-version.txt is the only thing tying a plugins release to a compatible engine
