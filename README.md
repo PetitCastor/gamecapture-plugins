@@ -68,15 +68,36 @@ open it as its own one-line PR (deliberately manual, see "Compatible engine vers
 CI's "Download pinned engine release" step confirm the new version's parity suites still pass before
 merging.
 
-## Known-carried debt: Mission parity is skipped
+## Mission parity is skipped — how to turn it on
 
-`MissionPlugin.Tests`'s `ReplayParityTests` is `Skip`-attributed pending an in-game corpus capture
-under `tests/fixtures/corpus/mission-accept/` — this is not a regression from the split, it was
-already skipped in the mono-repo this was extracted from (TASK-13's **[USER ACTION]**). RefineryPlugin's
-two parity corpora (`refinery-confirm`, `refinery-ice-rename`) run for real, in this repo and in CI.
-A green CI run here therefore does not mean both plugins' parity suites executed — check the skip
-count, not just the exit code. Landing the mission-accept corpus unskips the test with no further
-code or csproj change (see the `<None Include>` glob in `MissionPlugin.Tests.csproj`).
+`MissionPlugin.Tests`'s `ReplayParityTests` is `Skip`-attributed: there is no
+`tests/fixtures/corpus/mission-accept/` corpus to replay. RefineryPlugin's two corpora
+(`refinery-confirm`, `refinery-ice-rename`) run for real, here and in CI. This is inherited debt, not
+a regression from the repo split — the mono-repo this was extracted from never captured the mission
+corpus either.
+
+**What it means for a green CI run:** only one of the two plugins' parity gates actually executed.
+Read the skip count, not just the exit code.
+
+Clearing it is an in-game capture, and no code or csproj change:
+
+1. Run an engine against the live game with frame saving on — `GameCapture.Engine.exe --save-frames`
+   from a release zip, or `dotnet run --project src\GameCapture.Engine -- --save-frames` from an
+   engine clone.
+2. Accept one mission in-game, pressing the engine's hotkey (`engine-config.json`'s `hotkey`,
+   default `Ctrl+Shift+F12`, logged at startup) at each stage worth a frame — board open, mission
+   selected, post-accept. Roughly 5-8 frames.
+3. Copy the PNGs the engine wrote (its `outputDir`, `captures/` by default, printed as `Dumps:` on
+   startup) into `tests/fixtures/corpus/mission-accept/`. No renaming — the timestamped names
+   already sort in capture order, and `MissionPlugin.Tests.csproj`'s `<None Include>` glob copies
+   the directory into the test output already.
+4. Drop the `Skip = ...` from the `[Fact]` in
+   [`tests/MissionPlugin.Tests/ReplayParityTests.cs`](tests/MissionPlugin.Tests/ReplayParityTests.cs)
+   and run `dotnet test GameCapturePlugins.slnx` with `GAMECAPTURE_ENGINE_PATH` set.
+
+The test asserts **exactly one** `Auto` record from plugin `missions` over the whole corpus. If a
+capture yields more, the corpus spans more than one accept — recapture it rather than loosening the
+assertion, which is what defines "parity" here.
 
 ## Compatible engine version
 
