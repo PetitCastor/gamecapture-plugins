@@ -60,6 +60,9 @@ jobs:
       - name: Publish RefineryPlugin
         run: dotnet publish src/RefineryPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/RefineryPlugin
 
+      - name: Publish SignaturePlugin
+        run: dotnet publish src/SignaturePlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/SignaturePlugin
+
       # Named files, not `publish/<plugin>/*`: PublishSingleFile bundles the managed assemblies into
       # the exe but leaves .pdb files loose, and other publish-layout artifacts (docs xml, framework
       # deps) don't belong in a release zip either. Listing the two files that belong means the
@@ -67,7 +70,7 @@ jobs:
       # dropped CopyToOutputDirectory into a failed release rather than a silently incomplete zip.
       - name: Archive plugin zips
         run: |
-          $plugins = @('MissionPlugin', 'RefineryPlugin')
+          $plugins = @('MissionPlugin', 'RefineryPlugin', 'SignaturePlugin')
           foreach ($plugin in $plugins) {
             $files = "publish/$plugin/$plugin.exe", "publish/$plugin/config.json"
             $missing = $files | Where-Object { -not (Test-Path $_) }
