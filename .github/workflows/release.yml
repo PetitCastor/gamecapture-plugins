@@ -1,13 +1,15 @@
 name: Release
 
 on:
-  pull_request:
+  pull_request_target:
     types: [closed]
     branches: [master]
 
 # No nuget-release environment gate here — unlike gamecapture-engine, this repo publishes nothing
 # to nuget.org (SPLIT-MANIFEST.md's "Workflow split plan": "plugins repo has no publish target").
-# Every merged PR targeting master cuts self-contained plugin zips as GitHub release assets.
+# Every merged PR targeting master cuts self-contained plugin zips as GitHub release assets. The
+# target variant is required so a merged fork PR receives the repository's write-capable token;
+# the job is gated below and checks out only the resulting merge commit.
 concurrency:
   group: release-main
   cancel-in-progress: false
@@ -76,7 +78,7 @@ jobs:
             $nextVersion = [version]::new($latestVersion.Major, $latestVersion.Minor, $latestVersion.Build + 1)
           }
           $tag = "v$nextVersion"
-          tag=$tag >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
 
       - name: Publish MissionPlugin
         run: dotnet publish src/MissionPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/MissionPlugin
