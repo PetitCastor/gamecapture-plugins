@@ -90,6 +90,7 @@ public sealed class SignatureTable
             }
 
             var entries = new List<(string Name, double Signature, int Count)>();
+            var signatures = new HashSet<double>();
             foreach (var element in entriesElement.EnumerateArray())
             {
                 if (element.ValueKind != JsonValueKind.Object ||
@@ -112,6 +113,12 @@ public sealed class SignatureTable
                 {
                     throw new InvalidDataException(
                         $"Each entry in the {source} must have a non-empty name, a positive signature, and a positive count.");
+                }
+
+                if (!signatures.Add(signature))
+                {
+                    throw new InvalidDataException(
+                        $"Each entry in the {source} must have a unique signature; duplicate signature {signature} was found.");
                 }
 
                 entries.Add((name, signature, count));

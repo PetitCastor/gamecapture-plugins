@@ -14,10 +14,10 @@ public class SignatureTableTests
         Assert.Equal("ore", ore.Kind);
         Assert.Equal(1, ore.Count);
 
-        Assert.True(table.TryMatch(9510, 0, out var cluster));
-        Assert.Equal("Quantanium", cluster.Name);
+        Assert.True(table.TryMatch(19200, 0, out var cluster));
+        Assert.Equal("Aslarite", cluster.Name);
         Assert.Equal("ore", cluster.Kind);
-        Assert.Equal(3, cluster.Count);
+        Assert.Equal(5, cluster.Count);
     }
 
     [Fact]
@@ -25,6 +25,7 @@ public class SignatureTableTests
     {
         var table = SignatureTable.LoadEmbedded();
 
+        Assert.False(table.TryMatch(9510, 0, out _));
         Assert.False(table.TryMatch(31700, 0, out _));
     }
 
@@ -72,6 +73,7 @@ public class SignatureTableTests
     [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":0,\"count\":1}]}")]
     [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":0}]}")]
     [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":\"100\",\"count\":1}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":1},{\"name\":\"Beta\",\"signature\":100,\"count\":2}]}")]
     public void LoadFrom_InvalidTableDataThrows(string json)
     {
         var path = WriteTable(json);
