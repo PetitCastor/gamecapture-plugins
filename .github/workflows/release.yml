@@ -1,30 +1,37 @@
 name: Release
 
 on:
-  push:
-    tags: ['v[0-9]*.[0-9]*.[0-9]*']
+  pull_request:
+    types: [closed]
+    branches: [master]
 
 # No nuget-release environment gate here — unlike gamecapture-engine, this repo publishes nothing
 # to nuget.org (SPLIT-MANIFEST.md's "Workflow split plan": "plugins repo has no publish target").
-# A tag here only cuts self-contained plugin zips as GitHub release assets.
+# Every merged PR targeting master cuts self-contained plugin zips as GitHub release assets.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
 jobs:
   release:
     name: Build & Release
     runs-on: windows-latest
+    if: github.event.pull_request.merged == true
     permissions:
-      contents: write # gh release create; a permissions block zeroes all unlisted scopes.
+      contents: write # gh release create and tag creation; unlisted scopes are disabled.
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      # Same pinned-engine-binary need as ci.yml, so the tag push re-verifies the parity suites
-      # against the exact engine version this release states it was tested against, not whatever
-      # ran on the last CI push to master.
+      # Same pinned-engine-binary need as ci.yml, so the merge-triggered release re-verifies the
+      # parity suites against the exact engine version this release states it was tested against.
       - name: Download pinned engine release
         shell: pwsh
         env:
@@ -41,10 +48,9 @@ jobs:
           echo "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
           echo "ENGINE_VERSION=$engineVersion" >> $env:GITHUB_ENV
 
-      # Re-verifies rather than trusting whatever CI run happened on this ref — a tag can be pushed
-      # from any commit. Not gated in a required-reviewer environment (see the job comment above),
-      # so this Test step IS the release's only gate: a red suite here fails the job before either
-      # zip step runs.
+      # Re-verifies rather than trusting the pull request's CI run. Not gated in a required-reviewer
+      # environment (see the job comment above), so this Test step IS the release's only gate: a red
+      # suite here fails the job before either zip step runs.
       - name: Restore
         run: dotnet restore GameCapturePlugins.slnx
 
@@ -53,6 +59,24 @@ jobs:
 
       - name: Test
         run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+
+      - name: Determine release version
+        id: release_version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tags = gh release list --limit 1000 --json tagName | ConvertFrom-Json | ForEach-Object { $_.tagName }
+          $versions = $tags | Where-Object { $_ -match '^v[0-9]+[.][0-9]+[.][0-9]+$' } | ForEach-Object { [version]$_.Substring(1) }
+          if ($versions.Count -eq 0) {
+            $nextVersion = [version]::new(1, 0, 0)
+          }
+          else {
+            $latestVersion = $versions | Sort-Object | Select-Object -Last 1
+            $nextVersion = [version]::new($latestVersion.Major, $latestVersion.Minor, $latestVersion.Build + 1)
+          }
+          $tag = "v$nextVersion"
+          tag=$tag >> $env:GITHUB_OUTPUT
 
       - name: Publish MissionPlugin
         run: dotnet publish src/MissionPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/MissionPlugin
@@ -75,7 +99,7 @@ jobs:
             $files = "publish/$plugin/$plugin.exe", "publish/$plugin/config.json"
             $missing = $files | Where-Object { -not (Test-Path $_) }
             if ($missing) { throw "Missing from publish output: $($missing -join ', ')" }
-            Compress-Archive -Path $files -DestinationPath "$plugin-${{ github.ref_name }}-win-x64.zip"
+            Compress-Archive -Path $files -DestinationPath "$plugin-${{ steps.release_version.outputs.tag }}-win-x64.zip"
           }
 
       # Release notes explicitly name the engine version this release was tested against —
@@ -96,7 +120,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create ${{ github.ref_name }} `
-            "MissionPlugin-${{ github.ref_name }}-win-x64.zip" `
-            "RefineryPlugin-${{ github.ref_name }}-win-x64.zip" `
+          gh release create ${{ steps.release_version.outputs.tag }} `
+            --target ${{ github.event.pull_request.merge_commit_sha }} `
+            "MissionPlugin-${{ steps.release_version.outputs.tag }}-win-x64.zip" `
+            "RefineryPlugin-${{ steps.release_version.outputs.tag }}-win-x64.zip" `
+            "SignaturePlugin-${{ steps.release_version.outputs.tag }}-win-x64.zip" `
             --notes-file release-notes-header.md --generate-notes
