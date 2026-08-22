@@ -1,4 +1,12 @@
 {
   "pipeName": "GameCapture.Engine",
-  "saveDebugFrames": false
+  "saveDebugFrames": false,
+  "outputs": [
+    {
+      "type": "json",
+      "path": "captures/signatures.jsonl",
+      "dedupeOnChange": true,
+      "recordClears": true
+    }
+  ]
 }

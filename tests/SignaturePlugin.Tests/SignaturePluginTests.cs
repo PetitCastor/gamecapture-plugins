@@ -35,8 +35,24 @@ public class SignaturePluginTests
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
 
-        Assert.Equal(2, services.Emitted.Count);
-        Assert.Contains("\"count\":0", services.Emitted[1].RawText);
+        Assert.Single(services.Emitted);
+        var clear = Assert.Single(services.Cleared);
+        Assert.Equal("SignaturePlugin", clear.Plugin);
+        Assert.Equal(RecordKind.Cleared, clear.Kind);
+    }
+
+    [Fact]
+    public async Task Dropped_ticks_then_invalid_read_emits_a_clear()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        plugin.OnSessionEvent(new SessionEvent.TicksDropped(1));
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+
+        Assert.Single(services.Emitted);
+        Assert.Single(services.Cleared);
     }
 
     [Fact]

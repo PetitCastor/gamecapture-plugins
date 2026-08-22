@@ -39,7 +39,10 @@ public sealed class SignaturePlugin : IGameCapturePlugin
 
     public void OnSessionEvent(SessionEvent evt)
     {
-        if (evt is SessionEvent.TicksDropped) { _lastObservation = null; _hasObservation = false; }
+        // Force the first post-gap observation through, but keep the active-state flag until an
+        // invalid reading can clear it. Otherwise an object that disappeared during the dropped
+        // frames would remain stale in configured sinks forever.
+        if (evt is SessionEvent.TicksDropped) _lastObservation = null;
     }
 
     public IEnumerable<string> SummaryLines() => [$"  last signature: {_lastObservation ?? "none"}"];
@@ -51,8 +54,7 @@ public sealed class SignaturePlugin : IGameCapturePlugin
         {
             if (_hasObservation)
             {
-                var clear = JsonSerializer.Serialize(new SignatureEvent(null, null, null, 0, null), JsonOptions);
-                ctx.Services.Emit(new CaptureRecord(ctx.Tick.Timestamp, Name, trigger, clear));
+                ctx.Services.EmitCleared(ctx.Tick.Timestamp, Name);
                 _hasObservation = false; _lastObservation = null;
             }
             return;
