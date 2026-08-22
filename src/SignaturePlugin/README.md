@@ -2,30 +2,63 @@
 
 A [GameCapture](https://github.com/PetitCastor/gamecapture-engine) plugin: a console process that
 declares screen regions (ROIs) and what to do with the OCR result each time a tick carrying them
-arrives. It never captures a frame, never runs OCR, and never speaks gRPC — `GameCapturePluginHost`
+arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `GameCapturePluginHost`
 (from `GameCapture.Sdk`) owns connecting, subscribing, reconnecting, and shutdown.
 
-## Calibrate your ROIs first
+## Calibrate The Signature ROI
 
-`SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) pointed at nothing in
-particular. Before writing any tracking logic, find your own region's real coordinates:
+`SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) for the mining-mode RS
+signature number. Before trusting replay parity, calibrate that rectangle against your own capture:
 
-1. Get an engine running — either a
+1. Get an engine running with `--save-frames`, either a
    [release zip](https://github.com/PetitCastor/gamecapture-engine/releases)
    (`GameCapture.Engine-vX.Y.Z-win-x64.zip`) or a clone of the engine repo built locally.
-2. Set `"saveDebugFrames": true` in `config.json`.
-3. Run the plugin with `--verbose` against the running engine and press the engine's capture
-   hotkey (`engine-config.json`'s `hotkey`, default `Ctrl+Shift+F12`) while the screen you care
-   about is up.
-4. Compare the dumped PNG (path printed by `--verbose`) against `Rois.Counter`'s rectangle — it's
-   declared in **reference space, 2560x1440, always** — and nudge `RoiRect(x, y, width, height)`
-   and `Scale` until the crop lands on your text. Small UI text usually needs a `Scale` of 2-4.
-5. Repeat for every region your tracker needs, then replace the counter-change logic in
-   `OnTickAsync` with your own.
+2. Set `"saveDebugFrames": true` in `config.json`. The engine saves full replay frames;
+   `saveDebugFrames` saves the cropped ROI dumps used to tune the rectangle.
+3. Run the plugin with `--verbose` against the running engine. In game, open scan mode with a
+   known ore, asteroid, or debris signature visible.
+4. Press the engine's capture hotkey (`engine-config.json`'s `hotkey`, default `Ctrl+Shift+F12`).
+5. Compare the dumped PNG path printed by `--verbose` against `Rois.Counter`'s rectangle. It is
+   declared in reference space, 2560x1440, always. Nudge `RoiRect(x, y, width, height)` and `Scale`
+   until the crop lands on the number. Small UI text usually needs a `Scale` of 2-4.
+6. Keep `saveDebugFrames` enabled until manual ticks reliably dump only the signature number.
 
-Full walkthrough — ROI kinds, scale, error handling, session events, testing, config/CLI — in the
-hosted plugin-authoring guide:
+Full walkthrough: ROI kinds, scale, error handling, session events, testing, config, and CLI are in
+the hosted plugin-authoring guide:
 [`docs/PLUGIN-AUTHORING.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md).
+
+## Replay Corpus
+
+`tests/SignaturePlugin.Tests/ReplayParityTests.cs` contains the carried integration gate for this
+plugin. It is intentionally skipped until a real corpus exists.
+
+Capture known frames with an active engine:
+
+1. Calibrate `Rois.Counter` with `saveDebugFrames` as above.
+2. Start the engine with `--save-frames` so each hotkey press writes a full-frame PNG replay source.
+3. Leave the game in scan mode with only the RS signature number inside the ROI.
+4. Press the engine hotkey once per known ore, asteroid, or debris signature. A screenshot that
+   contains only the number inside the ROI is enough; the manifest supplies the label.
+5. Copy the engine-saved PNGs into `tests/fixtures/corpus/scan-signature/`.
+6. Add `tests/fixtures/corpus/scan-signature/manifest.json`:
+
+```json
+{
+  "frames": [
+    { "file": "0001-bexalite.png", "name": "Bexalite", "kind": "ore" }
+  ]
+}
+```
+
+The test project links those files to `Fixtures/Replay/scan-signature/` in the test output. Point
+`GAMECAPTURE_ENGINE_PATH` at a built or unpacked `GameCapture.Engine.exe`, remove the `Skip`, and
+run the `Integration` test. The test loads `signature-table.json` from the output directory, replays
+each manifest-labelled PNG as its own one-frame corpus, and asserts the emitted `{ name, kind }`
+observation against the manifest. It also checks that every copied PNG has exactly one manifest
+entry.
+
+If captured measurements disagree with `Resources/signature-table.json`, update that table in the
+same change and note the source or patch context in the PR body.
 
 ## Output
 
@@ -40,16 +73,19 @@ Change the `outputs` array in `config.json` to disable it (`[]`) or choose anoth
 the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
 lists the JSON, CSV, HTTP, and optional overlay configurations.
 
-## Build & test
+When an overlay sink is configured, matched observations show the configured template and
+`EmitCleared` hides stale text after the signature becomes unknown or disappears. The plugin also
+preserves that clear across dropped ticks, so a gap cannot leave an old signature stuck on screen.
+
+## Build & Test
 
 ```powershell
 dotnet build
 dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj --filter "Category!=Integration"
 ```
 
-The one test tagged `Integration` is skipped until you have a replay corpus — see
-[`docs/REPLAY.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md)
-and the `[Fact(Skip = ...)]` in `tests/SignaturePlugin.Tests/ReplayParityTests.cs` for what to fill in.
+The one test tagged `Integration` is skipped until you have the `scan-signature` replay corpus and
+manifest described above.
 
 ## Run
 
