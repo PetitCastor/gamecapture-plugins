@@ -12,16 +12,31 @@ public class SignaturePluginTests
         => TickContext.ForTesting(tick, services);
 
     [Fact]
-    public async Task Emits_once_per_change()
+    public async Task Emits_structured_observation_once_per_change()
     {
         var plugin = new SignaturePlugin();
         var services = new FakePluginServices();
 
-        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3/8").Build(), services), default);
-        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3/8").Build(), services), default);
-        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "4/8").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "7200").Build(), services), default);
 
-        Assert.Equal(["3/8", "4/8"], services.Emitted.Select(r => r.RawText));
+        Assert.Equal(2, services.Emitted.Count);
+        Assert.Contains("\"name\":\"Bexalite\"", services.Emitted[0].RawText);
+        Assert.Contains("\"count\":2", services.Emitted[1].RawText);
+    }
+
+    [Fact]
+    public async Task Invalid_after_observation_emits_one_clear()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+
+        Assert.Equal(2, services.Emitted.Count);
+        Assert.Contains("\"count\":0", services.Emitted[1].RawText);
     }
 
     [Fact]

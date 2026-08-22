@@ -18,6 +18,9 @@
 
   <ItemGroup>
     <None Update="config.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Resources\signature-table.json" Link="signature-table.json"
+          CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Resources\signature-table.json" />
   </ItemGroup>
 
 </Project>
