@@ -1,7 +1,7 @@
 using GameCapture.Sdk;
-using OrePluginRois = global::OrePlugin.Rois;
+using SignaturePluginRois = global::SignaturePlugin.Rois;
 
-namespace OrePlugin;
+namespace SignaturePlugin;
 
 /// <summary>
 /// Watches one region for a counter and emits a record every time the value changes.
@@ -14,17 +14,17 @@ namespace OrePlugin;
 /// and, worse, a project name containing a dot (a normal .NET convention, e.g. <c>-n Acme.MyPlugin</c>)
 /// would splice straight into the class declaration and fail to compile.
 /// </remarks>
-public sealed class OrePlugin : IGameCapturePlugin
+public sealed class SignaturePlugin : IGameCapturePlugin
 {
     private string? _last;
 
     /// <summary>The client name on the Track stream and the tag on every record emitted.</summary>
-    public string Name => "OrePlugin";
+    public string Name => "SignaturePlugin";
 
     // Namespace-qualified, not a bare `Rois.All`: this class implements the interface's own `Rois`
     // property below, and a member always shadows a same-named type for unqualified lookup inside
     // the class that declares it — the qualified form is what reaches the static holder instead.
-    public IReadOnlyList<RoiSubscription> Rois => OrePluginRois.All;
+    public IReadOnlyList<RoiSubscription> Rois => SignaturePluginRois.All;
 
     /// <summary>Default. The host skips any tick in which a subscribed region failed, so
     /// nothing below ever reads a degraded value.</summary>
@@ -34,7 +34,7 @@ public sealed class OrePlugin : IGameCapturePlugin
     {
         // TryGetText, not Text: a failed region and a genuinely blank panel both answer "",
         // and only the bool tells them apart.
-        if (!ctx.Tick.TryGetText(OrePluginRois.Counter.Id, out var text))
+        if (!ctx.Tick.TryGetText(SignaturePluginRois.Counter.Id, out var text))
             return Task.CompletedTask;
 
         var value = text.Trim();
@@ -54,7 +54,7 @@ public sealed class OrePlugin : IGameCapturePlugin
     /// where the region gets dumped so you can see exactly what the engine read (see README.md).</summary>
     public async Task OnManualTickAsync(TickContext ctx, CancellationToken ct)
     {
-        if (!ctx.Tick.TryGetText(OrePluginRois.Counter.Id, out var text))
+        if (!ctx.Tick.TryGetText(SignaturePluginRois.Counter.Id, out var text))
             return;
 
         var value = text.Trim();
@@ -73,7 +73,7 @@ public sealed class OrePlugin : IGameCapturePlugin
         // saveDebugFrames is true, which is the ordinary case.
         try
         {
-            var png = await ctx.Services.DumpFrameAsync(OrePluginRois.Counter.Rect, "counter", ct);
+            var png = await ctx.Services.DumpFrameAsync(SignaturePluginRois.Counter.Rect, "counter", ct);
             if (png is not null)
                 ctx.Services.LogVerbose($"counter read '{value}' — frame dumped to {png}");
         }

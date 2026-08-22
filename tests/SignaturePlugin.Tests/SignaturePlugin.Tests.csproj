@@ -20,7 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\OrePlugin\OrePlugin.csproj" />
+    <ProjectReference Include="..\..\src\SignaturePlugin\SignaturePlugin.csproj" />
     <!-- TickDataBuilder, FakePluginServices, ReplayHarness, EngineLocator. Brings GameCapture.Sdk
          and GameCapture.Contracts transitively. -->
     <PackageReference Include="GameCapture.Sdk.Testing" Version="1.1.0" />

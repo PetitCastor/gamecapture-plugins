@@ -1,6 +1,6 @@
 using Xunit;
 
-namespace OrePlugin.Tests;
+namespace SignaturePlugin.Tests;
 
 /// <summary>
 /// A spawned engine owns a named pipe and a Windows OCR instance, so two replay tests must never

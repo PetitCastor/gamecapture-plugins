@@ -2,11 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/MissionPlugin/MissionPlugin.csproj" />
     <Project Path="src/RefineryPlugin/RefineryPlugin.csproj" />
-    <Project Path="src/OrePlugin/OrePlugin.csproj" />
+    <Project Path="src/SignaturePlugin/SignaturePlugin.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/MissionPlugin.Tests/MissionPlugin.Tests.csproj" />
     <Project Path="tests/RefineryPlugin.Tests/RefineryPlugin.Tests.csproj" />
-    <Project Path="tests/OrePlugin.Tests/OrePlugin.Tests.csproj" />
+    <Project Path="tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj" />
   </Folder>
 </Solution>

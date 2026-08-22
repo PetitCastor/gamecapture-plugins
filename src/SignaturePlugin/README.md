@@ -1,4 +1,4 @@
-# OrePlugin
+# SignaturePlugin
 
 A [GameCapture](https://github.com/PetitCastor/gamecapture-engine) plugin: a console process that
 declares screen regions (ROIs) and what to do with the OCR result each time a tick carrying them
@@ -7,7 +7,7 @@ arrives. It never captures a frame, never runs OCR, and never speaks gRPC — `G
 
 ## Calibrate your ROIs first
 
-`OrePlugin.cs` ships with one placeholder region (`Rois.Counter`) pointed at nothing in
+`SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) pointed at nothing in
 particular. Before writing any tracking logic, find your own region's real coordinates:
 
 1. Get an engine running — either a
@@ -31,12 +31,12 @@ hosted plugin-authoring guide:
 
 ```powershell
 dotnet build
-dotnet test tests/OrePlugin.Tests/OrePlugin.Tests.csproj --filter "Category!=Integration"
+dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj --filter "Category!=Integration"
 ```
 
 The one test tagged `Integration` is skipped until you have a replay corpus — see
 [`docs/REPLAY.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md)
-and the `[Fact(Skip = ...)]` in `tests/OrePlugin.Tests/OrePluginTests.cs` for what to fill in.
+and the `[Fact(Skip = ...)]` in `tests/SignaturePlugin.Tests/ReplayParityTests.cs` for what to fill in.
 
 ## Run
 

@@ -2,7 +2,7 @@ using GameCapture.Sdk;
 using GameCapture.Sdk.Testing;
 using Xunit;
 
-namespace OrePlugin.Tests;
+namespace SignaturePlugin.Tests;
 
 /// <summary>
 /// A spawned engine owns a named pipe and a Windows OCR instance, so two of these must never run
@@ -36,14 +36,14 @@ public class ReplayParityTests
         {
             EnginePath = EngineLocator.Resolve(),
             CorpusDir = corpusDir,
-            Plugin = new OrePlugin(),
+            Plugin = new SignaturePlugin(),
         });
 
         Assert.Equal(0, result.ExitCode);
         Assert.Equal(StreamEndReason.ReplayCompleted, result.Reason);
 
         var record = Assert.Single(result.Records);
-        Assert.Equal("OrePlugin", record.Plugin);
+        Assert.Equal("SignaturePlugin", record.Plugin);
         Assert.Equal(TriggerKind.Auto, record.Trigger);
     }
 }

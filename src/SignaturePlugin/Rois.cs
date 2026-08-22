@@ -1,7 +1,7 @@
 using GameCapture.Contracts;
 using GameCapture.Sdk;
 
-namespace OrePlugin;
+namespace SignaturePlugin;
 
 /// <summary>
 /// The regions this plugin subscribes, in reference space (2560x1440). Static for the life of the
