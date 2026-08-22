@@ -51,8 +51,8 @@ jobs:
           echo "ENGINE_VERSION=$engineVersion" >> $env:GITHUB_ENV
 
       # Re-verifies rather than trusting the pull request's CI run. Not gated in a required-reviewer
-      # environment (see the job comment above), so this Test step IS the release's only gate: a red
-      # suite here fails the job before either zip step runs.
+      # environment (see the job comment above), so these validation steps are the release's gate:
+      # a failure stops the job before any zip step runs.
       - name: Restore
         run: dotnet restore GameCapturePlugins.slnx
 
@@ -61,6 +61,17 @@ jobs:
 
       - name: Test
         run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+
+      # Keep the release gate aligned with CI: build success alone cannot catch a plugin coupling
+      # itself to engine/transport internals.
+      - name: Plugin boundary grep gate
+        shell: bash
+        run: |
+          if rg -n -g '*.cs' "using Grpc|RpcException|GameCapture\.Contracts\.Proto|GameCapture\.Engine" src/; then
+            echo "::error::Plugin boundary violation — a plugin references an engine/transport internal (listed above)."
+            exit 1
+          fi
+          echo "Plugin boundary clean: no engine/transport references under src/."
 
       - name: Determine release version
         id: release_version
@@ -114,7 +125,8 @@ jobs:
           Tested against gamecapture-engine $env:ENGINE_VERSION (pinned in engine-version.txt).
 
           Mission parity is known-skipped in this build's test run pending an in-game corpus
-          capture (see 00-OVERVIEW.md / [USER ACTION] in the source repo this was split from) —
+          capture, and Signature parity is skipped pending its scan-signature corpus (see the
+          corresponding test skips and [USER ACTION] in the source repo this was split from) —
           Refinery parity ran for real.
           "@ | Out-File -Encoding utf8 release-notes-header.md
 
