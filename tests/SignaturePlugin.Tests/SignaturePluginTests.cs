@@ -42,6 +42,20 @@ public class SignaturePluginTests
     }
 
     [Fact]
+    public async Task Dropped_ticks_then_invalid_read_emits_a_clear()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        plugin.OnSessionEvent(new SessionEvent.TicksDropped(1));
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+
+        Assert.Single(services.Emitted);
+        Assert.Single(services.Cleared);
+    }
+
+    [Fact]
     public async Task Failed_roi_emits_nothing()
     {
         var plugin = new SignaturePlugin();
