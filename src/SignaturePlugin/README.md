@@ -27,6 +27,19 @@ Full walkthrough — ROI kinds, scale, error handling, session events, testing, 
 hosted plugin-authoring guide:
 [`docs/PLUGIN-AUTHORING.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md).
 
+## Output
+
+The shipped `config.json` appends every signature observation to
+`captures/signatures.jsonl`, beside the config file. Each observation line is one GameCapture
+record whose `rawText` is the structured signature JSON emitted by this plugin. Repeated unchanged
+observations are de-duplicated; the cleared record is retained as `kind: "Cleared"` with empty
+`rawText` so a consumer can remove stale state.
+
+This is a local JSON Lines file only: it does not send data over the network or display an overlay.
+Change the `outputs` array in `config.json` to disable it (`[]`) or choose another supported sink;
+the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
+lists the JSON, CSV, HTTP, and optional overlay configurations.
+
 ## Build & test
 
 ```powershell

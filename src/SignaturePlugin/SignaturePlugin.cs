@@ -51,8 +51,7 @@ public sealed class SignaturePlugin : IGameCapturePlugin
         {
             if (_hasObservation)
             {
-                var clear = JsonSerializer.Serialize(new SignatureEvent(null, null, null, 0, null), JsonOptions);
-                ctx.Services.Emit(new CaptureRecord(ctx.Tick.Timestamp, Name, trigger, clear));
+                ctx.Services.EmitCleared(ctx.Tick.Timestamp, Name);
                 _hasObservation = false; _lastObservation = null;
             }
             return;

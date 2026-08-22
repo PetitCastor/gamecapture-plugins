@@ -35,8 +35,10 @@ public class SignaturePluginTests
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
 
-        Assert.Equal(2, services.Emitted.Count);
-        Assert.Contains("\"count\":0", services.Emitted[1].RawText);
+        Assert.Single(services.Emitted);
+        var clear = Assert.Single(services.Cleared);
+        Assert.Equal("SignaturePlugin", clear.Plugin);
+        Assert.Equal(RecordKind.Cleared, clear.Kind);
     }
 
     [Fact]
