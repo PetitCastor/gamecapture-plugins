@@ -1,106 +1,221 @@
 # gamecapture-plugins
-
 [![CI](https://github.com/PetitCastor/gamecapture-plugins/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/PetitCastor/gamecapture-plugins/actions/workflows/ci.yml)
 [![Release](https://github.com/PetitCastor/gamecapture-plugins/actions/workflows/release.yml/badge.svg)](https://github.com/PetitCastor/gamecapture-plugins/releases)
-
-Star Citizen trackers built as pure [GameCapture](https://github.com/PetitCastor/gamecapture-engine)
-SDK consumers: **MissionPlugin** (mission-board parsing) and **RefineryPlugin** (refinery order
-tracking). Each is a separate process that owns nothing but its own parsing and state — see the
-engine repo's README for the capture-engine/plugin split this repo is the plugin half of.
-
-This repo does not build or run the engine itself. It references `GameCapture.Sdk` /
-`GameCapture.Contracts` / `GameCapture.Sdk.Testing` from nuget.org, and CI pulls a released engine
-binary (pinned in [`engine-version.txt`](engine-version.txt)) to run the two plugins' replay-parity
-suites against.
-
-## Layout
-
+Star Citizen trackers built as pure
+[GameCapture](https://github.com/PetitCastor/gamecapture-engine) SDK consumers.
+This repo is the place to build and maintain plugins. A plugin is a plain console
+process that declares the screen regions it cares about, receives OCR/pixel ticks
+from a running engine, and emits records. It does not capture frames, run OCR, or
+talk gRPC directly; `GameCapturePluginHost` from `GameCapture.Sdk` owns the
+engine connection, subscription, reconnect loop, cancellation, and summary.
+Current plugins:
+| Plugin | Purpose |
+| --- | --- |
+| `MissionPlugin` | Watches the mission board and emits mission acceptance captures. |
+| `RefineryPlugin` | Tracks refinery work-order state from refinery UI panels. |
+| `SignaturePlugin` | Matches scan signature values to ore, asteroid, or debris metadata. |
+## First Rules
+- Keep each plugin as a plain `net10.0` console app. The Windows TFM and capture
+  stack stop at the engine.
+- Reference `GameCapture.Sdk` and `GameCapture.Contracts` from nuget.org. Do not
+  add a `ProjectReference` to the side-by-side engine clone.
+- Keep parsing, ROI declarations, state, config, and tests inside the plugin's own
+  `src/<PluginName>/` and `tests/<PluginName>.Tests/` folders.
+- Declare ROI rectangles in reference space, `2560x1440`, and let the engine scale
+  them to the live frame.
+- Prefer `TryGetText`, `TryGetOcr`, and `TryGetPixels` over value-only accessors so
+  failed ROIs do not look like blank readings.
+- Treat replay parity as the integration gate. Unit tests prove parser/state logic;
+  replay tests prove the plugin works through a real engine binary.
+## Add A Plugin Here
+For a standalone plugin repo, use the published template:
+```powershell
+dotnet new install GameCapture.Plugin.Template
+dotnet new gamecapture-plugin -n MyPlugin
 ```
-src/MissionPlugin/          RefineryPlugin/       — one process, one plugin, each
-tests/MissionPlugin.Tests/  RefineryPlugin.Tests/ — unit tests + replay-parity tests
+Inside this repository, create the same shape manually or scaffold in a scratch
+directory and move the useful files into place:
+```text
+src/MyPlugin/
+  MyPlugin.csproj
+  Program.cs
+  Rois.cs
+  MyTrackerPlugin.cs
+  config.json
+tests/MyPlugin.Tests/
+  MyPlugin.Tests.csproj
+  MyPluginTests.cs
+  ReplayParityTests.cs
+  ReplayParityCollection.cs
 ```
-
-## Building
-
+Add both projects to `GameCapturePlugins.slnx`:
+```xml
+<Project Path="src/MyPlugin/MyPlugin.csproj" />
+<Project Path="tests/MyPlugin.Tests/MyPlugin.Tests.csproj" />
+```
+Start the plugin project as a normal executable:
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>MyPlugin</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
+    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="config.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="MyPlugin.Tests" />
+  </ItemGroup>
+</Project>
+```
+The entry point should stay small:
+```csharp
+using GameCapture.Sdk;
+return await GameCapturePluginHost.RunAsync(new MyPlugin.MyTrackerPlugin(), args);
+```
+Use `config.json` for host-level settings. The pipe name must match the engine:
+```json
+{
+  "pipeName": "GameCapture.Engine",
+  "saveDebugFrames": false
+}
+```
+If the plugin needs its own settings, derive from `PluginConfig`, load the derived
+type in `Program.cs`, and pass it through `PluginHostOptions.Config`. Resolve
+relative paths against the config file location, not the shell's working directory.
+## Implement The Plugin
+Every plugin implements `IGameCapturePlugin`:
+```csharp
+using GameCapture.Contracts;
+using GameCapture.Sdk;
+namespace MyPlugin;
+public static class Rois
+{
+    public static readonly RoiSubscription Counter =
+        new("counter", new RoiRect(1000, 110, 420, 100), 3.0, RoiKind.Text);
+    public static readonly IReadOnlyList<RoiSubscription> All = [Counter];
+}
+public sealed class MyTrackerPlugin : IGameCapturePlugin
+{
+    private string? _last;
+    public string Name => "my-plugin";
+    public IReadOnlyList<RoiSubscription> Rois => MyPlugin.Rois.All;
+    public RoiErrorPolicy ErrorPolicy => RoiErrorPolicy.AbortTick;
+    public Task OnTickAsync(TickContext ctx, CancellationToken ct)
+    {
+        if (!ctx.Tick.TryGetText(MyPlugin.Rois.Counter.Id, out var text))
+            return Task.CompletedTask;
+        var value = text.Trim();
+        if (value.Length == 0 || value == _last)
+            return Task.CompletedTask;
+        _last = value;
+        ctx.Services.Emit(new CaptureRecord(ctx.Tick.Timestamp, Name, TriggerKind.Auto, value));
+        return Task.CompletedTask;
+    }
+}
+```
+Use this as the starting point, then add only the behavior the tracker needs:
+- Put all ROI ids in one place, usually `Rois.cs`.
+- Keep state changes in `OnTickAsync`; the host delivers ticks sequentially, so
+  normal plugin state does not need locks.
+- Override `OnManualTickAsync` when the engine hotkey should force a different
+  behavior than the normal tick path.
+- Implement `OnSessionEvent` when dropped ticks or reconnects change what your
+  state machine can safely infer.
+- Emit `CaptureRecord` values through `ctx.Services.Emit`; do not duplicate the
+  same event with console logging.
+- Use `LogVerbose` for per-tick diagnostics so normal runs stay quiet.
+The full SDK guide is in the engine repo:
+[`docs/PLUGIN-AUTHORING.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md).
+## Calibrate ROIs
+The practical calibration loop is:
+1. Run an engine with frame saving enabled.
+2. Set `"saveDebugFrames": true` in the plugin's `config.json`.
+3. Run the plugin with `--verbose`.
+4. Put the game UI in the state the plugin should read.
+5. Press the engine hotkey, default `Ctrl+Shift+F12`.
+6. Compare the dumped crop with the intended UI region.
+7. Nudge `RoiRect(x, y, width, height)` and `Scale`, then repeat.
+Use `RoiKind.Text` for plain text regions, `RoiKind.Detailed` when word positions
+matter, and `RoiKind.Pixels` for small color probes. Do not use large pixel
+regions as a substitute for OCR; they are bounded by the engine's pixel payload
+budget after scaling to the live frame size.
+`DumpFrameAsync` and `ReadRoiAsync` are calibration aids. Do not use them as the
+source of truth for normal decisions because they read the engine's most recently
+scanned frame, not necessarily the same frame as the current tick.
+## Test A Plugin
+Unit tests use `GameCapture.Sdk.Testing` and do not need a running engine:
+```csharp
+using GameCapture.Sdk;
+using GameCapture.Sdk.Testing;
+using Xunit;
+namespace MyPlugin.Tests;
+public class MyPluginTests
+{
+    private static TickContext Tick(TickData tick, FakePluginServices services)
+        => TickContext.ForTesting(tick, services);
+    [Fact]
+    public async Task Emits_once_per_change()
+    {
+        var plugin = new MyTrackerPlugin();
+        var services = new FakePluginServices();
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3/8").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3/8").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "4/8").Build(), services), default);
+        Assert.Equal(["3/8", "4/8"], services.Emitted.Select(r => r.RawText));
+    }
+}
+```
+Replay parity tests spawn a real `GameCapture.Engine.exe`, replay a PNG corpus,
+and drive the plugin through its real host path. Put captured PNGs under
+`tests/fixtures/corpus/<name>/`, link them into the test output from the test
+project, and point `GAMECAPTURE_ENGINE_PATH` at the engine binary:
+```powershell
+$env:GAMECAPTURE_ENGINE_PATH = "C:\tools\gamecapture\GameCapture.Engine.exe"
+dotnet test GameCapturePlugins.slnx --filter "Category=Integration"
+```
+Replay tests that do not yet have a real corpus should be explicitly skipped.
+When CI is green, still check the skip count; a skipped parity test did not prove
+the plugin against the engine.
+## Build And Run
+From this repo root:
 ```powershell
 dotnet restore GameCapturePlugins.slnx
 dotnet build GameCapturePlugins.slnx -c Release
 dotnet test GameCapturePlugins.slnx -c Release
 ```
-
-Replay-parity tests (`ReplayParityTests` in each `.Tests` project) need
-`GAMECAPTURE_ENGINE_PATH` pointed at a built or downloaded `GameCapture.Engine.exe` — see
-[`GameCapture.Sdk.Testing`'s `EngineLocator`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md)
-for how to build one locally, or download a release per `engine-version.txt` the way `ci.yml` does.
-
-## Local dev loop
-
-**Running a plugin against a live engine**, whether debugging a plugin change or capturing a new
-corpus (see [engine repo `docs/REPLAY.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/REPLAY.md#capturing-a-corpus-in-game)),
-needs an engine process running first — this repo has no engine source, so you get one one of two ways:
-
-- **From a release zip** (matches what CI/release actually run against): download and unzip the
-  version named in `engine-version.txt`, e.g. `gh release download v1.0.0 -R PetitCastor/gamecapture-engine
-  -p "GameCapture.Engine-*-win-x64.zip"`, then run the extracted `GameCapture.Engine.exe` directly.
-- **From a side-by-side clone** (for testing against an unreleased engine change): clone
-  `gamecapture-engine` next to this repo and `dotnet run --project src\GameCapture.Engine`. Not a
-  git submodule — the two repos version independently (nuget.org packages vs. a pinned release tag),
-  so a submodule pointer would fight that rather than help it. Just two sibling directories.
-
-Either way, run the plugin in a second terminal/process — `dotnet run --project src\MissionPlugin`
-or `src\RefineryPlugin` — pointed at the engine's named pipe the way `config.json` already expects.
-There is no multi-startup-project `.sln` here to press one F5 for both: Visual Studio's "multiple
-startup projects" only works within one solution, and the engine now lives in a different repo/solution
-entirely. The VS equivalent of the two-terminal loop above is two VS instances (or one VS + one
-terminal) — open `gamecapture-engine`'s solution in one, this repo's `GameCapturePlugins.slnx` in the
-other, and F5 each independently.
-
-**Testing an SDK-in-progress change** before it's published to nuget.org: pack the engine repo
-locally (`dotnet pack GameCaptureEngine.slnx -c Release -o ../local-feed` from a `gamecapture-engine`
-checkout) and point this repo at that folder instead of nuget.org —
-`dotnet nuget add source ../local-feed --name local-sdk-feed` in a `nuget.config` here, then bump the
-plugin `.csproj` `PackageReference` versions to whatever MinVer derived for the packed build. Revert
-both before committing; this is a scratch loop, not something that ships (same scaffolding TASK-21's
-rehearsal used, not a repo convention).
-
-**Bumping the pinned engine version**: edit `engine-version.txt` to the new `gamecapture-engine` tag,
-open it as its own one-line PR (deliberately manual, see "Compatible engine version" below), and let
-CI's "Download pinned engine release" step confirm the new version's parity suites still pass before
-merging.
-
-## Mission parity is skipped — how to turn it on
-
-`MissionPlugin.Tests`'s `ReplayParityTests` is `Skip`-attributed: there is no
-`tests/fixtures/corpus/mission-accept/` corpus to replay. RefineryPlugin's two corpora
-(`refinery-confirm`, `refinery-ice-rename`) run for real, here and in CI. This is inherited debt, not
-a regression from the repo split — the mono-repo this was extracted from never captured the mission
-corpus either.
-
-**What it means for a green CI run:** only one of the two plugins' parity gates actually executed.
-Read the skip count, not just the exit code.
-
-Clearing it is an in-game capture, and no code or csproj change:
-
-1. Run an engine against the live game with frame saving on — `GameCapture.Engine.exe --save-frames`
-   from a release zip, or `dotnet run --project src\GameCapture.Engine -- --save-frames` from an
-   engine clone.
-2. Accept one mission in-game, pressing the engine's hotkey (`engine-config.json`'s `hotkey`,
-   default `Ctrl+Shift+F12`, logged at startup) at each stage worth a frame — board open, mission
-   selected, post-accept. Roughly 5-8 frames.
-3. Copy the PNGs the engine wrote (its `outputDir`, `captures/` by default, printed as `Dumps:` on
-   startup) into `tests/fixtures/corpus/mission-accept/`. No renaming — the timestamped names
-   already sort in capture order, and `MissionPlugin.Tests.csproj`'s `<None Include>` glob copies
-   the directory into the test output already.
-4. Drop the `Skip = ...` from the `[Fact]` in
-   [`tests/MissionPlugin.Tests/ReplayParityTests.cs`](tests/MissionPlugin.Tests/ReplayParityTests.cs)
-   and run `dotnet test GameCapturePlugins.slnx` with `GAMECAPTURE_ENGINE_PATH` set.
-
-The test asserts **exactly one** `Auto` record from plugin `missions` over the whole corpus. If a
-capture yields more, the corpus spans more than one accept — recapture it rather than loosening the
-assertion, which is what defines "parity" here.
-
-## Compatible engine version
-
-[`engine-version.txt`](engine-version.txt) names the `gamecapture-engine` release this repo's CI and
-release pipeline test and package against. Bumping it is a deliberate manual one-line PR, not
-something Dependabot opens — see [`.github/dependabot.yml`](.github/dependabot.yml).
+On a machine without the Windows OCR language pack, filter out replay parity:
+```powershell
+dotnet test GameCapturePlugins.slnx -c Release --filter "Category!=Integration"
+```
+To run a plugin live, start an engine first. Use the released engine named by
+`engine-version.txt`, or a side-by-side engine clone only when deliberately testing
+an unreleased engine change:
+```powershell
+gh release download v1.1.0 -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip"
+dotnet run --project src/MyPlugin -- --verbose
+```
+The plugin waits on `config.json`'s `pipeName`. If it waits forever, the plugin
+and engine are using different pipe names.
+## Engine Version
+`engine-version.txt` names the released engine this repo's CI downloads for
+replay parity. Bump it in its own small PR after the engine release exists, then
+let CI prove the existing plugins still pass against that binary.
+The package references intentionally use `1.*`. The plugins consume the published
+SDK packages, while replay parity pins the real engine executable. Do not solve a
+plugins build by wiring in the local engine source tree.
+## Existing Plugin Notes
+- `MissionPlugin` has its parity test skipped until
+  `tests/fixtures/corpus/mission-accept/` contains a real mission acceptance
+  corpus.
+- `RefineryPlugin` has live replay corpora under
+  `tests/fixtures/corpus/refinery-confirm/` and
+  `tests/fixtures/corpus/refinery-ice-rename/`.
+- `SignaturePlugin` has a plugin-specific README at
+  [`src/SignaturePlugin/README.md`](src/SignaturePlugin/README.md) covering its ROI
+  calibration, manifest format, output sink, and skipped corpus gate.
