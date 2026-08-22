@@ -41,6 +41,45 @@ public class SignatureTableTests
     }
 
     [Fact]
+    public void LoadOrCreate_WritesEmbeddedDefaultsOnFirstRun()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"signature-table-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "signature-table.json");
+        try
+        {
+            var table = SignatureTable.LoadOrCreate(path);
+
+            Assert.True(File.Exists(path));
+            Assert.True(table.TryMatch(3600, 0, out var match));
+            Assert.Equal("Bexalite", match.Name);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void LoadOrCreate_PreservesAnExistingUserTable()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"signature-table-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(path, "{\"entries\":[{\"name\":\"Custom\",\"signature\":200.0}]}");
+
+            var table = SignatureTable.LoadOrCreate(path);
+
+            Assert.True(table.TryMatch(200, 0, out var match));
+            Assert.Equal("Custom", match.Name);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void LoadFrom_MatchesDerivedSignature()
     {
         var path = WriteTable("{\"entries\":[{\"name\":\"First\",\"signature\":200.0}]}");

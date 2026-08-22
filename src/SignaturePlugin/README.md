@@ -57,8 +57,11 @@ each manifest-labelled PNG as its own one-frame corpus, and asserts the emitted 
 observation against the manifest. It also checks that every copied PNG has exactly one manifest
 entry.
 
-If captured measurements disagree with `Resources/signature-table.json`, update that table in the
-same change and note the source or patch context in the PR body.
+On first launch, the plugin creates a user-editable default table at
+`%LOCALAPPDATA%\GameCapture\SignaturePlugin\signature-table.json`. It preserves that file on
+later launches, so edit it when captured measurements disagree with the shipped defaults. Update
+`Resources/signature-table.json` in the same change only when the new values should become the
+default for future users; note the source or patch context in the PR body.
 
 ## Output
 
