@@ -5,6 +5,9 @@ namespace SignaturePlugin;
 /// <summary>Data-driven mapping from one-ore RS signatures to ore clusters.</summary>
 public sealed class SignatureTable
 {
+    private const string ConfigDirectoryName = "GameCapture";
+    private const string PluginDirectoryName = "SignaturePlugin";
+    private const string FileName = "signature-table.json";
     private const string ResourceName = "SignaturePlugin.Resources.signature-table.json";
     private const int MaximumClusterCount = 6;
     private readonly IReadOnlyList<(string Name, double UnitSignature)> _entries;
@@ -15,11 +18,38 @@ public sealed class SignatureTable
     /// <summary>Loads the checked-in community-reference table embedded in the plugin.</summary>
     public static SignatureTable LoadEmbedded()
     {
-        var assembly = typeof(SignatureTable).Assembly;
-        using var stream = assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException($"Embedded signature table '{ResourceName}' was not found.");
-        using var reader = new StreamReader(stream);
-        return Parse(reader.ReadToEnd(), "embedded table");
+        return Parse(ReadEmbeddedJson(), "embedded table");
+    }
+
+    /// <summary>Returns the per-user table location used by the plugin.</summary>
+    public static string GetUserFilePath()
+        => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            ConfigDirectoryName,
+            PluginDirectoryName,
+            FileName);
+
+    /// <summary>
+    /// Loads the user-editable table, creating it from the embedded defaults on first run.
+    /// Existing files are never rewritten, including files that contain invalid JSON.
+    /// </summary>
+    public static SignatureTable LoadUserFile() => LoadOrCreate(GetUserFilePath());
+
+    /// <summary>
+    /// Loads a table from <paramref name="path"/>, creating that file from the embedded defaults
+    /// when it does not yet exist.
+    /// </summary>
+    public static SignatureTable LoadOrCreate(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+
+        if (!File.Exists(path))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
+            File.WriteAllText(path, ReadEmbeddedJson());
+        }
+
+        return LoadFrom(path);
     }
 
     /// <summary>Loads a user-editable table from JSON. Invalid table data throws InvalidDataException.</summary>
@@ -27,6 +57,15 @@ public sealed class SignatureTable
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         return Parse(File.ReadAllText(path), path);
+    }
+
+    private static string ReadEmbeddedJson()
+    {
+        var assembly = typeof(SignatureTable).Assembly;
+        using var stream = assembly.GetManifestResourceStream(ResourceName)
+            ?? throw new InvalidOperationException($"Embedded signature table '{ResourceName}' was not found.");
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     /// <summary>
