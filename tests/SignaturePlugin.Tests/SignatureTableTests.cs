@@ -5,7 +5,7 @@ namespace SignaturePlugin.Tests;
 public class SignatureTableTests
 {
     [Fact]
-    public void LoadEmbedded_MatchesListedOreEntries()
+    public void LoadEmbedded_MatchesOresAndDerivedClusterCounts()
     {
         var table = SignatureTable.LoadEmbedded();
 
@@ -14,32 +14,43 @@ public class SignatureTableTests
         Assert.Equal("ore", ore.Kind);
         Assert.Equal(1, ore.Count);
 
-        Assert.True(table.TryMatch(19200, 0, out var cluster));
-        Assert.Equal("Aslarite", cluster.Name);
+        Assert.True(table.TryMatch(21600, 0, out var cluster));
+        Assert.Equal("Bexalite", cluster.Name);
         Assert.Equal("ore", cluster.Kind);
-        Assert.Equal(5, cluster.Count);
+        Assert.Equal(6, cluster.Count);
     }
 
     [Fact]
-    public void LoadEmbedded_DoesNotInferUnlistedSignatureMultiples()
+    public void LoadEmbedded_DerivesCountsThroughSix()
     {
         var table = SignatureTable.LoadEmbedded();
 
-        Assert.False(table.TryMatch(9510, 0, out _));
+        Assert.True(table.TryMatch(19020, 0, out var quantanium));
+        Assert.Equal("Quantanium", quantanium.Name);
+        Assert.Equal(6, quantanium.Count);
+
         Assert.False(table.TryMatch(31700, 0, out _));
     }
 
     [Fact]
-    public void LoadFrom_MatchesListedSignature()
+    public void LoadEmbedded_LeavesOverlappingClusterTotalsUnknown()
     {
-        var path = WriteTable("{\"entries\":[{\"name\":\"First\",\"signature\":200.0,\"count\":2}]}");
+        var table = SignatureTable.LoadEmbedded();
+
+        Assert.False(table.TryMatch(19200, 0, out _));
+    }
+
+    [Fact]
+    public void LoadFrom_MatchesDerivedSignature()
+    {
+        var path = WriteTable("{\"entries\":[{\"name\":\"First\",\"signature\":200.0}]}");
         try
         {
             var table = SignatureTable.LoadFrom(path);
 
-            Assert.True(table.TryMatch(200, 0, out var match));
+            Assert.True(table.TryMatch(1000, 0, out var match));
             Assert.Equal("First", match.Name);
-            Assert.Equal(2, match.Count);
+            Assert.Equal(5, match.Count);
             Assert.Equal(200, match.TableSignature);
         }
         finally
@@ -69,11 +80,11 @@ public class SignatureTableTests
     [InlineData("[]")]
     [InlineData("{}")]
     [InlineData("{\"entries\":[]}")]
-    [InlineData("{\"entries\":[{\"name\":\"\",\"signature\":100,\"count\":1}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":0,\"count\":1}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":0}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":\"100\",\"count\":1}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":1},{\"name\":\"Beta\",\"signature\":100,\"count\":2}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"\",\"signature\":100}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":0}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":\"100\"}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":1}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100},{\"name\":\"Beta\",\"signature\":100}]}")]
     public void LoadFrom_InvalidTableDataThrows(string json)
     {
         var path = WriteTable(json);
@@ -88,14 +99,14 @@ public class SignatureTableTests
     }
 
     [Theory]
-    [InlineData(100.0, 0.02, true, "Alpha", 1)]
-    [InlineData(101.9, 0.02, true, "Alpha", 1)]
-    [InlineData(102.0, 0.02, true, "Alpha", 1)]
-    [InlineData(102.01, 0.02, false, "", 0)]
+    [InlineData(500.0, 0.02, true, "Alpha", 5)]
+    [InlineData(509.9, 0.02, true, "Alpha", 5)]
+    [InlineData(510.0, 0.02, true, "Alpha", 5)]
+    [InlineData(510.01, 0.02, false, "", 0)]
     public void TryMatch_AppliesRelativeTolerance(
         double signature, double tolerance, bool expectedMatch, string expectedName, int expectedCount)
     {
-        var table = LoadTable("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100.0,\"count\":1},{\"name\":\"Beta\",\"signature\":200.0,\"count\":2}]}");
+        var table = LoadTable("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100.0}]}");
 
         var matched = table.TryMatch(signature, tolerance, out var match);
 
@@ -110,7 +121,7 @@ public class SignatureTableTests
     [Fact]
     public void TryMatch_EqualCandidatesReturnUnknown()
     {
-        var table = LoadTable("{\"entries\":[{\"name\":\"First\",\"signature\":100.0,\"count\":1},{\"name\":\"Second\",\"signature\":102.0,\"count\":1}]}");
+        var table = LoadTable("{\"entries\":[{\"name\":\"First\",\"signature\":100.0},{\"name\":\"Second\",\"signature\":102.0}]}");
 
         Assert.False(table.TryMatch(101, 0.02, out _));
     }

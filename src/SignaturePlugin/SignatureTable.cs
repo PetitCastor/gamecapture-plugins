@@ -2,13 +2,14 @@ using System.Text.Json;
 
 namespace SignaturePlugin;
 
-/// <summary>Data-driven mapping from observed mining RS signatures to ore clusters.</summary>
+/// <summary>Data-driven mapping from one-ore RS signatures to ore clusters.</summary>
 public sealed class SignatureTable
 {
     private const string ResourceName = "SignaturePlugin.Resources.signature-table.json";
-    private readonly IReadOnlyList<(string Name, double Signature, int Count)> _entries;
+    private const int MaximumClusterCount = 6;
+    private readonly IReadOnlyList<(string Name, double UnitSignature)> _entries;
 
-    private SignatureTable(IReadOnlyList<(string Name, double Signature, int Count)> entries)
+    private SignatureTable(IReadOnlyList<(string Name, double UnitSignature)> entries)
         => _entries = entries;
 
     /// <summary>Loads the checked-in community-reference table embedded in the plugin.</summary>
@@ -29,8 +30,9 @@ public sealed class SignatureTable
     }
 
     /// <summary>
-    /// Matches the closest listed signature. Equal-distance candidates are ambiguous and therefore
-    /// return false rather than silently selecting one ore cluster over another.
+    /// Matches the closest one-to-six-ore cluster derived from the listed unit signatures.
+    /// Equal-distance candidates are ambiguous and therefore return false rather than silently
+    /// selecting one ore cluster over another.
     /// </summary>
     public bool TryMatch(double signature, double tolerance, out SignatureMatch match)
     {
@@ -42,37 +44,42 @@ public sealed class SignatureTable
         var ambiguous = false;
         var bestDelta = double.PositiveInfinity;
         string? bestName = null;
-        var bestTableSignature = 0.0;
+        var bestUnitSignature = 0.0;
+        var bestResolvedSignature = 0.0;
         var bestCount = 0;
 
         foreach (var entry in _entries)
         {
-            var delta = signature - entry.Signature;
-            var absoluteDelta = Math.Abs(delta);
+            for (var count = 1; count <= MaximumClusterCount; count++)
+            {
+                var resolvedSignature = entry.UnitSignature * count;
+                var absoluteDelta = Math.Abs(signature - resolvedSignature);
 
-            if (absoluteDelta < bestDelta)
-            {
-                found = true;
-                ambiguous = false;
-                bestDelta = absoluteDelta;
-                bestName = entry.Name;
-                bestTableSignature = entry.Signature;
-                bestCount = entry.Count;
-            }
-            else if (absoluteDelta == bestDelta)
-            {
-                ambiguous = true;
+                if (absoluteDelta < bestDelta)
+                {
+                    found = true;
+                    ambiguous = false;
+                    bestDelta = absoluteDelta;
+                    bestName = entry.Name;
+                    bestUnitSignature = entry.UnitSignature;
+                    bestResolvedSignature = resolvedSignature;
+                    bestCount = count;
+                }
+                else if (absoluteDelta == bestDelta)
+                {
+                    ambiguous = true;
+                }
             }
         }
 
         if (!found || ambiguous || bestName is null ||
-            bestDelta > tolerance * bestTableSignature)
+            bestDelta > tolerance * bestResolvedSignature)
         {
             return false;
         }
 
-        match = new SignatureMatch(bestName, "ore", bestTableSignature, bestCount,
-            signature - bestTableSignature);
+        match = new SignatureMatch(bestName, "ore", bestUnitSignature, bestCount,
+            signature - bestResolvedSignature);
         return true;
     }
 
@@ -89,30 +96,28 @@ public sealed class SignatureTable
                 throw new InvalidDataException($"The {source} must contain an 'entries' JSON array.");
             }
 
-            var entries = new List<(string Name, double Signature, int Count)>();
+            var entries = new List<(string Name, double UnitSignature)>();
             var signatures = new HashSet<double>();
             foreach (var element in entriesElement.EnumerateArray())
             {
                 if (element.ValueKind != JsonValueKind.Object ||
                     !element.TryGetProperty("name", out var nameElement) ||
                     !element.TryGetProperty("signature", out var signatureElement) ||
-                    !element.TryGetProperty("count", out var countElement) ||
                     nameElement.ValueKind != JsonValueKind.String ||
                     signatureElement.ValueKind != JsonValueKind.Number ||
-                    countElement.ValueKind != JsonValueKind.Number ||
                     !signatureElement.TryGetDouble(out var signature) ||
-                    !countElement.TryGetInt32(out var count))
+                    element.TryGetProperty("count", out _))
                 {
                     throw new InvalidDataException(
-                        $"Each entry in the {source} must contain name, signature, and count.");
+                        $"Each entry in the {source} must contain name and signature, without count.");
                 }
 
                 var name = nameElement.GetString();
                 if (string.IsNullOrWhiteSpace(name) || !double.IsFinite(signature) ||
-                    signature <= 0 || count <= 0)
+                    signature <= 0)
                 {
                     throw new InvalidDataException(
-                        $"Each entry in the {source} must have a non-empty name, a positive signature, and a positive count.");
+                        $"Each entry in the {source} must have a non-empty name and a positive signature.");
                 }
 
                 if (!signatures.Add(signature))
@@ -121,7 +126,7 @@ public sealed class SignatureTable
                         $"Each entry in the {source} must have a unique signature; duplicate signature {signature} was found.");
                 }
 
-                entries.Add((name, signature, count));
+                entries.Add((name, signature));
             }
 
             if (entries.Count == 0)
