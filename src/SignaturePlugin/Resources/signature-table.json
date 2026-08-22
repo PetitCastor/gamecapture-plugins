@@ -1,47 +1,793 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "gamePatch": "4.9",
   "dataQuality": "community-reference",
-  "notes": "Verify against the live game after patches. Users may edit this file beside config.json.",
+  "notes": "Each entry is an observed ore-cluster signature. Verify against the live game after patches. Users may edit this file beside config.json.",
   "source": {
-    "name": "Prospector Index",
-    "url": "https://www.prospectorindex.com/",
+    "name": "SC Mining Signatures v.1",
+    "url": "https://docs.google.com/spreadsheets/d/1QOw9yAc20l88ih4yXft_ev1MPbar_3m9Xk7AXJ1VgKI/edit?gid=1033080128",
     "retrieved": "2026-08-22"
   },
   "entries": [
-    { "name": "Quantanium", "kind": "ore", "baseSignature": 3170, "maxCount": 10 },
-    { "name": "Stileron", "kind": "ore", "baseSignature": 3185, "maxCount": 10 },
-    { "name": "Savrilium", "kind": "ore", "baseSignature": 3200, "maxCount": 10 },
-    { "name": "Ouratite", "kind": "ore", "baseSignature": 3370, "maxCount": 10 },
-    { "name": "Riccite", "kind": "ore", "baseSignature": 3385, "maxCount": 10 },
-    { "name": "Lindinium", "kind": "ore", "baseSignature": 3400, "maxCount": 10 },
-    { "name": "Beryl", "kind": "ore", "baseSignature": 3540, "maxCount": 10 },
-    { "name": "Taranite", "kind": "ore", "baseSignature": 3555, "maxCount": 10 },
-    { "name": "Borase", "kind": "ore", "baseSignature": 3570, "maxCount": 10 },
-    { "name": "Gold", "kind": "ore", "baseSignature": 3585, "maxCount": 10 },
-    { "name": "Bexalite", "kind": "ore", "baseSignature": 3600, "maxCount": 10 },
-    { "name": "Laranite", "kind": "ore", "baseSignature": 3825, "maxCount": 10 },
-    { "name": "Aslarite", "kind": "ore", "baseSignature": 3840, "maxCount": 10 },
-    { "name": "Titanium", "kind": "ore", "baseSignature": 3855, "maxCount": 10 },
-    { "name": "Tungsten", "kind": "ore", "baseSignature": 3870, "maxCount": 10 },
-    { "name": "Agricium", "kind": "ore", "baseSignature": 3885, "maxCount": 10 },
-    { "name": "Torite", "kind": "ore", "baseSignature": 3900, "maxCount": 10 },
-    { "name": "Hephaestanite", "kind": "ore", "baseSignature": 4180, "maxCount": 10 },
-    { "name": "Tin", "kind": "ore", "baseSignature": 4195, "maxCount": 10 },
-    { "name": "Quartz", "kind": "ore", "baseSignature": 4210, "maxCount": 10 },
-    { "name": "Corundum", "kind": "ore", "baseSignature": 4225, "maxCount": 10 },
-    { "name": "Copper", "kind": "ore", "baseSignature": 4240, "maxCount": 10 },
-    { "name": "Silicon", "kind": "ore", "baseSignature": 4255, "maxCount": 10 },
-    { "name": "Iron", "kind": "ore", "baseSignature": 4270, "maxCount": 10 },
-    { "name": "Aluminum", "kind": "ore", "baseSignature": 4285, "maxCount": 10 },
-    { "name": "Ice", "kind": "ore", "baseSignature": 4300, "maxCount": 10 },
-    { "name": "I-Type Asteroid", "kind": "debris", "baseSignature": 1660, "maxCount": 10 },
-    { "name": "C-Type Asteroid", "kind": "debris", "baseSignature": 1700, "maxCount": 10 },
-    { "name": "S-Type Asteroid", "kind": "debris", "baseSignature": 1720, "maxCount": 10 },
-    { "name": "P-Type Asteroid", "kind": "debris", "baseSignature": 1750, "maxCount": 10 },
-    { "name": "M-Type Asteroid", "kind": "debris", "baseSignature": 1850, "maxCount": 10 },
-    { "name": "Q-Type Asteroid", "kind": "debris", "baseSignature": 1870, "maxCount": 10 },
-    { "name": "E-Type Asteroid", "kind": "debris", "baseSignature": 1900, "maxCount": 10 },
-    { "name": "Salvage Debris", "kind": "debris", "baseSignature": 2000, "maxCount": 10 }
+    {
+      "name": "Quantanium",
+      "signature": 3170,
+      "count": 1
+    },
+    {
+      "name": "Quantanium",
+      "signature": 6340,
+      "count": 2
+    },
+    {
+      "name": "Quantanium",
+      "signature": 9510,
+      "count": 3
+    },
+    {
+      "name": "Quantanium",
+      "signature": 12680,
+      "count": 4
+    },
+    {
+      "name": "Quantanium",
+      "signature": 15850,
+      "count": 5
+    },
+    {
+      "name": "Quantanium",
+      "signature": 19020,
+      "count": 6
+    },
+    {
+      "name": "Stileron",
+      "signature": 3185,
+      "count": 1
+    },
+    {
+      "name": "Stileron",
+      "signature": 6370,
+      "count": 2
+    },
+    {
+      "name": "Stileron",
+      "signature": 9555,
+      "count": 3
+    },
+    {
+      "name": "Stileron",
+      "signature": 12740,
+      "count": 4
+    },
+    {
+      "name": "Stileron",
+      "signature": 15925,
+      "count": 5
+    },
+    {
+      "name": "Stileron",
+      "signature": 19110,
+      "count": 6
+    },
+    {
+      "name": "Savrilium",
+      "signature": 3200,
+      "count": 1
+    },
+    {
+      "name": "Savrilium",
+      "signature": 6400,
+      "count": 2
+    },
+    {
+      "name": "Savrilium",
+      "signature": 9600,
+      "count": 3
+    },
+    {
+      "name": "Savrilium",
+      "signature": 12800,
+      "count": 4
+    },
+    {
+      "name": "Savrilium",
+      "signature": 16000,
+      "count": 5
+    },
+    {
+      "name": "Savrilium",
+      "signature": 19200,
+      "count": 6
+    },
+    {
+      "name": "Ouratite",
+      "signature": 3370,
+      "count": 1
+    },
+    {
+      "name": "Ouratite",
+      "signature": 6740,
+      "count": 2
+    },
+    {
+      "name": "Ouratite",
+      "signature": 10110,
+      "count": 3
+    },
+    {
+      "name": "Ouratite",
+      "signature": 13480,
+      "count": 4
+    },
+    {
+      "name": "Ouratite",
+      "signature": 16850,
+      "count": 5
+    },
+    {
+      "name": "Ouratite",
+      "signature": 20220,
+      "count": 6
+    },
+    {
+      "name": "Riccite",
+      "signature": 3385,
+      "count": 1
+    },
+    {
+      "name": "Riccite",
+      "signature": 6770,
+      "count": 2
+    },
+    {
+      "name": "Riccite",
+      "signature": 10155,
+      "count": 3
+    },
+    {
+      "name": "Riccite",
+      "signature": 13540,
+      "count": 4
+    },
+    {
+      "name": "Riccite",
+      "signature": 16925,
+      "count": 5
+    },
+    {
+      "name": "Riccite",
+      "signature": 20310,
+      "count": 6
+    },
+    {
+      "name": "Lindinium",
+      "signature": 3400,
+      "count": 1
+    },
+    {
+      "name": "Lindinium",
+      "signature": 6800,
+      "count": 2
+    },
+    {
+      "name": "Lindinium",
+      "signature": 10200,
+      "count": 3
+    },
+    {
+      "name": "Lindinium",
+      "signature": 13600,
+      "count": 4
+    },
+    {
+      "name": "Lindinium",
+      "signature": 17000,
+      "count": 5
+    },
+    {
+      "name": "Lindinium",
+      "signature": 20400,
+      "count": 6
+    },
+    {
+      "name": "Beryl",
+      "signature": 3540,
+      "count": 1
+    },
+    {
+      "name": "Beryl",
+      "signature": 7080,
+      "count": 2
+    },
+    {
+      "name": "Beryl",
+      "signature": 10620,
+      "count": 3
+    },
+    {
+      "name": "Beryl",
+      "signature": 14160,
+      "count": 4
+    },
+    {
+      "name": "Beryl",
+      "signature": 17700,
+      "count": 5
+    },
+    {
+      "name": "Beryl",
+      "signature": 21240,
+      "count": 6
+    },
+    {
+      "name": "Taranite",
+      "signature": 3555,
+      "count": 1
+    },
+    {
+      "name": "Taranite",
+      "signature": 7110,
+      "count": 2
+    },
+    {
+      "name": "Taranite",
+      "signature": 10665,
+      "count": 3
+    },
+    {
+      "name": "Taranite",
+      "signature": 14220,
+      "count": 4
+    },
+    {
+      "name": "Taranite",
+      "signature": 17775,
+      "count": 5
+    },
+    {
+      "name": "Taranite",
+      "signature": 21330,
+      "count": 6
+    },
+    {
+      "name": "Borase",
+      "signature": 3570,
+      "count": 1
+    },
+    {
+      "name": "Borase",
+      "signature": 7140,
+      "count": 2
+    },
+    {
+      "name": "Borase",
+      "signature": 10710,
+      "count": 3
+    },
+    {
+      "name": "Borase",
+      "signature": 14280,
+      "count": 4
+    },
+    {
+      "name": "Borase",
+      "signature": 17850,
+      "count": 5
+    },
+    {
+      "name": "Borase",
+      "signature": 21420,
+      "count": 6
+    },
+    {
+      "name": "Gold",
+      "signature": 3585,
+      "count": 1
+    },
+    {
+      "name": "Gold",
+      "signature": 7170,
+      "count": 2
+    },
+    {
+      "name": "Gold",
+      "signature": 10755,
+      "count": 3
+    },
+    {
+      "name": "Gold",
+      "signature": 14340,
+      "count": 4
+    },
+    {
+      "name": "Gold",
+      "signature": 17925,
+      "count": 5
+    },
+    {
+      "name": "Gold",
+      "signature": 21510,
+      "count": 6
+    },
+    {
+      "name": "Bexalite",
+      "signature": 3600,
+      "count": 1
+    },
+    {
+      "name": "Bexalite",
+      "signature": 7200,
+      "count": 2
+    },
+    {
+      "name": "Bexalite",
+      "signature": 10800,
+      "count": 3
+    },
+    {
+      "name": "Bexalite",
+      "signature": 14400,
+      "count": 4
+    },
+    {
+      "name": "Bexalite",
+      "signature": 18000,
+      "count": 5
+    },
+    {
+      "name": "Bexalite",
+      "signature": 21600,
+      "count": 6
+    },
+    {
+      "name": "Laranite",
+      "signature": 3825,
+      "count": 1
+    },
+    {
+      "name": "Laranite",
+      "signature": 7650,
+      "count": 2
+    },
+    {
+      "name": "Laranite",
+      "signature": 11475,
+      "count": 3
+    },
+    {
+      "name": "Laranite",
+      "signature": 15300,
+      "count": 4
+    },
+    {
+      "name": "Laranite",
+      "signature": 19125,
+      "count": 5
+    },
+    {
+      "name": "Laranite",
+      "signature": 22950,
+      "count": 6
+    },
+    {
+      "name": "Aslarite",
+      "signature": 3840,
+      "count": 1
+    },
+    {
+      "name": "Aslarite",
+      "signature": 7680,
+      "count": 2
+    },
+    {
+      "name": "Aslarite",
+      "signature": 11520,
+      "count": 3
+    },
+    {
+      "name": "Aslarite",
+      "signature": 15360,
+      "count": 4
+    },
+    {
+      "name": "Aslarite",
+      "signature": 19200,
+      "count": 5
+    },
+    {
+      "name": "Aslarite",
+      "signature": 23040,
+      "count": 6
+    },
+    {
+      "name": "Titanium",
+      "signature": 3855,
+      "count": 1
+    },
+    {
+      "name": "Titanium",
+      "signature": 7710,
+      "count": 2
+    },
+    {
+      "name": "Titanium",
+      "signature": 11565,
+      "count": 3
+    },
+    {
+      "name": "Titanium",
+      "signature": 15420,
+      "count": 4
+    },
+    {
+      "name": "Titanium",
+      "signature": 19275,
+      "count": 5
+    },
+    {
+      "name": "Titanium",
+      "signature": 23130,
+      "count": 6
+    },
+    {
+      "name": "Tungsten",
+      "signature": 3870,
+      "count": 1
+    },
+    {
+      "name": "Tungsten",
+      "signature": 7740,
+      "count": 2
+    },
+    {
+      "name": "Tungsten",
+      "signature": 11610,
+      "count": 3
+    },
+    {
+      "name": "Tungsten",
+      "signature": 15480,
+      "count": 4
+    },
+    {
+      "name": "Tungsten",
+      "signature": 19350,
+      "count": 5
+    },
+    {
+      "name": "Tungsten",
+      "signature": 23220,
+      "count": 6
+    },
+    {
+      "name": "Agricium",
+      "signature": 3885,
+      "count": 1
+    },
+    {
+      "name": "Agricium",
+      "signature": 7770,
+      "count": 2
+    },
+    {
+      "name": "Agricium",
+      "signature": 11655,
+      "count": 3
+    },
+    {
+      "name": "Agricium",
+      "signature": 15540,
+      "count": 4
+    },
+    {
+      "name": "Agricium",
+      "signature": 19425,
+      "count": 5
+    },
+    {
+      "name": "Agricium",
+      "signature": 23310,
+      "count": 6
+    },
+    {
+      "name": "Torite",
+      "signature": 3900,
+      "count": 1
+    },
+    {
+      "name": "Torite",
+      "signature": 7800,
+      "count": 2
+    },
+    {
+      "name": "Torite",
+      "signature": 11700,
+      "count": 3
+    },
+    {
+      "name": "Torite",
+      "signature": 15600,
+      "count": 4
+    },
+    {
+      "name": "Torite",
+      "signature": 19500,
+      "count": 5
+    },
+    {
+      "name": "Torite",
+      "signature": 23400,
+      "count": 6
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 4180,
+      "count": 1
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 8360,
+      "count": 2
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 12540,
+      "count": 3
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 16720,
+      "count": 4
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 20900,
+      "count": 5
+    },
+    {
+      "name": "Hephaestanite",
+      "signature": 25080,
+      "count": 6
+    },
+    {
+      "name": "Tin",
+      "signature": 4195,
+      "count": 1
+    },
+    {
+      "name": "Tin",
+      "signature": 8390,
+      "count": 2
+    },
+    {
+      "name": "Tin",
+      "signature": 12585,
+      "count": 3
+    },
+    {
+      "name": "Tin",
+      "signature": 16780,
+      "count": 4
+    },
+    {
+      "name": "Tin",
+      "signature": 20975,
+      "count": 5
+    },
+    {
+      "name": "Tin",
+      "signature": 25170,
+      "count": 6
+    },
+    {
+      "name": "Quartz",
+      "signature": 4210,
+      "count": 1
+    },
+    {
+      "name": "Quartz",
+      "signature": 8420,
+      "count": 2
+    },
+    {
+      "name": "Quartz",
+      "signature": 12630,
+      "count": 3
+    },
+    {
+      "name": "Quartz",
+      "signature": 16840,
+      "count": 4
+    },
+    {
+      "name": "Quartz",
+      "signature": 21050,
+      "count": 5
+    },
+    {
+      "name": "Quartz",
+      "signature": 25260,
+      "count": 6
+    },
+    {
+      "name": "Corundum",
+      "signature": 4225,
+      "count": 1
+    },
+    {
+      "name": "Corundum",
+      "signature": 8450,
+      "count": 2
+    },
+    {
+      "name": "Corundum",
+      "signature": 12675,
+      "count": 3
+    },
+    {
+      "name": "Corundum",
+      "signature": 16900,
+      "count": 4
+    },
+    {
+      "name": "Corundum",
+      "signature": 21125,
+      "count": 5
+    },
+    {
+      "name": "Corundum",
+      "signature": 25350,
+      "count": 6
+    },
+    {
+      "name": "Copper",
+      "signature": 4240,
+      "count": 1
+    },
+    {
+      "name": "Copper",
+      "signature": 8480,
+      "count": 2
+    },
+    {
+      "name": "Copper",
+      "signature": 12720,
+      "count": 3
+    },
+    {
+      "name": "Copper",
+      "signature": 16960,
+      "count": 4
+    },
+    {
+      "name": "Copper",
+      "signature": 21200,
+      "count": 5
+    },
+    {
+      "name": "Copper",
+      "signature": 25440,
+      "count": 6
+    },
+    {
+      "name": "Silicon",
+      "signature": 4255,
+      "count": 1
+    },
+    {
+      "name": "Silicon",
+      "signature": 8510,
+      "count": 2
+    },
+    {
+      "name": "Silicon",
+      "signature": 12765,
+      "count": 3
+    },
+    {
+      "name": "Silicon",
+      "signature": 17020,
+      "count": 4
+    },
+    {
+      "name": "Silicon",
+      "signature": 21275,
+      "count": 5
+    },
+    {
+      "name": "Silicon",
+      "signature": 25530,
+      "count": 6
+    },
+    {
+      "name": "Iron",
+      "signature": 4270,
+      "count": 1
+    },
+    {
+      "name": "Iron",
+      "signature": 8540,
+      "count": 2
+    },
+    {
+      "name": "Iron",
+      "signature": 12810,
+      "count": 3
+    },
+    {
+      "name": "Iron",
+      "signature": 17080,
+      "count": 4
+    },
+    {
+      "name": "Iron",
+      "signature": 21350,
+      "count": 5
+    },
+    {
+      "name": "Iron",
+      "signature": 25620,
+      "count": 6
+    },
+    {
+      "name": "Aluminum",
+      "signature": 4285,
+      "count": 1
+    },
+    {
+      "name": "Aluminum",
+      "signature": 8570,
+      "count": 2
+    },
+    {
+      "name": "Aluminum",
+      "signature": 12855,
+      "count": 3
+    },
+    {
+      "name": "Aluminum",
+      "signature": 17140,
+      "count": 4
+    },
+    {
+      "name": "Aluminum",
+      "signature": 21425,
+      "count": 5
+    },
+    {
+      "name": "Aluminum",
+      "signature": 25710,
+      "count": 6
+    },
+    {
+      "name": "Ice",
+      "signature": 4300,
+      "count": 1
+    },
+    {
+      "name": "Ice",
+      "signature": 8600,
+      "count": 2
+    },
+    {
+      "name": "Ice",
+      "signature": 12900,
+      "count": 3
+    },
+    {
+      "name": "Ice",
+      "signature": 17200,
+      "count": 4
+    },
+    {
+      "name": "Ice",
+      "signature": 21500,
+      "count": 5
+    },
+    {
+      "name": "Ice",
+      "signature": 25800,
+      "count": 6
+    }
   ]
 }

@@ -5,7 +5,7 @@ namespace SignaturePlugin.Tests;
 public class SignatureTableTests
 {
     [Fact]
-    public void LoadEmbedded_MatchesOreAndDebrisEntries()
+    public void LoadEmbedded_MatchesListedOreEntries()
     {
         var table = SignatureTable.LoadEmbedded();
 
@@ -14,24 +14,24 @@ public class SignatureTableTests
         Assert.Equal("ore", ore.Kind);
         Assert.Equal(1, ore.Count);
 
-        Assert.True(table.TryMatch(1700, 0, out var debris));
-        Assert.Equal("C-Type Asteroid", debris.Name);
-        Assert.Equal("debris", debris.Kind);
-        Assert.Equal(1, debris.Count);
+        Assert.True(table.TryMatch(9510, 0, out var cluster));
+        Assert.Equal("Quantanium", cluster.Name);
+        Assert.Equal("ore", cluster.Kind);
+        Assert.Equal(3, cluster.Count);
     }
 
     [Fact]
-    public void LoadEmbedded_RealOreDebrisCollisionReturnsUnknown()
+    public void LoadEmbedded_DoesNotInferUnlistedSignatureMultiples()
     {
         var table = SignatureTable.LoadEmbedded();
 
-        Assert.False(table.TryMatch(3400, 0, out _));
+        Assert.False(table.TryMatch(31700, 0, out _));
     }
 
     [Fact]
-    public void LoadFrom_MatchesBaseSignatureMultiple()
+    public void LoadFrom_MatchesListedSignature()
     {
-        var path = WriteTable("{\"entries\":[{\"name\":\"First\",\"kind\":\"ore\",\"baseSignature\":100.0,\"maxCount\":3}]}");
+        var path = WriteTable("{\"entries\":[{\"name\":\"First\",\"signature\":200.0,\"count\":2}]}");
         try
         {
             var table = SignatureTable.LoadFrom(path);
@@ -68,10 +68,10 @@ public class SignatureTableTests
     [InlineData("[]")]
     [InlineData("{}")]
     [InlineData("{\"entries\":[]}")]
-    [InlineData("{\"entries\":[{\"name\":\"\",\"kind\":\"ore\",\"baseSignature\":100,\"maxCount\":1}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"kind\":\"ore\",\"baseSignature\":0,\"maxCount\":1}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"kind\":\"ore\",\"baseSignature\":100,\"maxCount\":0}]}")]
-    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"kind\":\"ore\",\"baseSignature\":\"100\",\"maxCount\":1}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"\",\"signature\":100,\"count\":1}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":0,\"count\":1}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100,\"count\":0}]}")]
+    [InlineData("{\"entries\":[{\"name\":\"Alpha\",\"signature\":\"100\",\"count\":1}]}")]
     public void LoadFrom_InvalidTableDataThrows(string json)
     {
         var path = WriteTable(json);
@@ -93,7 +93,7 @@ public class SignatureTableTests
     public void TryMatch_AppliesRelativeTolerance(
         double signature, double tolerance, bool expectedMatch, string expectedName, int expectedCount)
     {
-        var table = LoadTable("{\"entries\":[{\"name\":\"Alpha\",\"kind\":\"ore\",\"baseSignature\":100.0,\"maxCount\":3},{\"name\":\"Beta\",\"kind\":\"debris\",\"baseSignature\":200.0,\"maxCount\":1}]}");
+        var table = LoadTable("{\"entries\":[{\"name\":\"Alpha\",\"signature\":100.0,\"count\":1},{\"name\":\"Beta\",\"signature\":200.0,\"count\":2}]}");
 
         var matched = table.TryMatch(signature, tolerance, out var match);
 
@@ -108,7 +108,7 @@ public class SignatureTableTests
     [Fact]
     public void TryMatch_EqualCandidatesReturnUnknown()
     {
-        var table = LoadTable("{\"entries\":[{\"name\":\"Ore\",\"kind\":\"ore\",\"baseSignature\":100.0,\"maxCount\":1},{\"name\":\"Debris\",\"kind\":\"debris\",\"baseSignature\":102.0,\"maxCount\":1}]}");
+        var table = LoadTable("{\"entries\":[{\"name\":\"First\",\"signature\":100.0,\"count\":1},{\"name\":\"Second\",\"signature\":102.0,\"count\":1}]}");
 
         Assert.False(table.TryMatch(101, 0.02, out _));
     }

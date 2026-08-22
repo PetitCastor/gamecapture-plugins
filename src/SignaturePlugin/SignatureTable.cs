@@ -2,13 +2,13 @@ using System.Text.Json;
 
 namespace SignaturePlugin;
 
-/// <summary>Ordered, data-driven mapping from mining RS signatures to ore or debris names.</summary>
+/// <summary>Data-driven mapping from observed mining RS signatures to ore clusters.</summary>
 public sealed class SignatureTable
 {
     private const string ResourceName = "SignaturePlugin.Resources.signature-table.json";
-    private readonly IReadOnlyList<(string Name, string Kind, double BaseSignature, int MaxCount)> _entries;
+    private readonly IReadOnlyList<(string Name, double Signature, int Count)> _entries;
 
-    private SignatureTable(IReadOnlyList<(string Name, string Kind, double BaseSignature, int MaxCount)> entries)
+    private SignatureTable(IReadOnlyList<(string Name, double Signature, int Count)> entries)
         => _entries = entries;
 
     /// <summary>Loads the checked-in community-reference table embedded in the plugin.</summary>
@@ -29,8 +29,8 @@ public sealed class SignatureTable
     }
 
     /// <summary>
-    /// Matches the closest base-signature multiple. Equal-distance candidates are ambiguous and
-    /// therefore return false rather than silently selecting an ore over debris (or vice versa).
+    /// Matches the closest listed signature. Equal-distance candidates are ambiguous and therefore
+    /// return false rather than silently selecting one ore cluster over another.
     /// </summary>
     public bool TryMatch(double signature, double tolerance, out SignatureMatch match)
     {
@@ -42,42 +42,36 @@ public sealed class SignatureTable
         var ambiguous = false;
         var bestDelta = double.PositiveInfinity;
         string? bestName = null;
-        string? bestKind = null;
         var bestTableSignature = 0.0;
         var bestCount = 0;
 
         foreach (var entry in _entries)
         {
-            for (var count = 1; count <= entry.MaxCount; count++)
-            {
-                var tableSignature = entry.BaseSignature * count;
-                var delta = signature - tableSignature;
-                var absoluteDelta = Math.Abs(delta);
+            var delta = signature - entry.Signature;
+            var absoluteDelta = Math.Abs(delta);
 
-                if (absoluteDelta < bestDelta)
-                {
-                    found = true;
-                    ambiguous = false;
-                    bestDelta = absoluteDelta;
-                    bestName = entry.Name;
-                    bestKind = entry.Kind;
-                    bestTableSignature = tableSignature;
-                    bestCount = count;
-                }
-                else if (absoluteDelta == bestDelta)
-                {
-                    ambiguous = true;
-                }
+            if (absoluteDelta < bestDelta)
+            {
+                found = true;
+                ambiguous = false;
+                bestDelta = absoluteDelta;
+                bestName = entry.Name;
+                bestTableSignature = entry.Signature;
+                bestCount = entry.Count;
+            }
+            else if (absoluteDelta == bestDelta)
+            {
+                ambiguous = true;
             }
         }
 
-        if (!found || ambiguous || bestName is null || bestKind is null ||
+        if (!found || ambiguous || bestName is null ||
             bestDelta > tolerance * bestTableSignature)
         {
             return false;
         }
 
-        match = new SignatureMatch(bestName, bestKind, bestTableSignature, bestCount,
+        match = new SignatureMatch(bestName, "ore", bestTableSignature, bestCount,
             signature - bestTableSignature);
         return true;
     }
@@ -95,35 +89,32 @@ public sealed class SignatureTable
                 throw new InvalidDataException($"The {source} must contain an 'entries' JSON array.");
             }
 
-            var entries = new List<(string Name, string Kind, double BaseSignature, int MaxCount)>();
+            var entries = new List<(string Name, double Signature, int Count)>();
             foreach (var element in entriesElement.EnumerateArray())
             {
                 if (element.ValueKind != JsonValueKind.Object ||
                     !element.TryGetProperty("name", out var nameElement) ||
-                    !element.TryGetProperty("kind", out var kindElement) ||
-                    !element.TryGetProperty("baseSignature", out var baseElement) ||
-                    !element.TryGetProperty("maxCount", out var maxCountElement) ||
+                    !element.TryGetProperty("signature", out var signatureElement) ||
+                    !element.TryGetProperty("count", out var countElement) ||
                     nameElement.ValueKind != JsonValueKind.String ||
-                    kindElement.ValueKind != JsonValueKind.String ||
-                    baseElement.ValueKind != JsonValueKind.Number ||
-                    maxCountElement.ValueKind != JsonValueKind.Number ||
-                    !baseElement.TryGetDouble(out var baseSignature) ||
-                    !maxCountElement.TryGetInt32(out var maxCount))
+                    signatureElement.ValueKind != JsonValueKind.Number ||
+                    countElement.ValueKind != JsonValueKind.Number ||
+                    !signatureElement.TryGetDouble(out var signature) ||
+                    !countElement.TryGetInt32(out var count))
                 {
                     throw new InvalidDataException(
-                        $"Each entry in the {source} must contain name, kind, baseSignature, and maxCount.");
+                        $"Each entry in the {source} must contain name, signature, and count.");
                 }
 
                 var name = nameElement.GetString();
-                var kind = kindElement.GetString();
-                if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(kind) ||
-                    !double.IsFinite(baseSignature) || baseSignature <= 0 || maxCount <= 0)
+                if (string.IsNullOrWhiteSpace(name) || !double.IsFinite(signature) ||
+                    signature <= 0 || count <= 0)
                 {
                     throw new InvalidDataException(
-                        $"Each entry in the {source} must have non-empty text, a positive baseSignature, and a positive maxCount.");
+                        $"Each entry in the {source} must have a non-empty name, a positive signature, and a positive count.");
                 }
 
-                entries.Add((name, kind, baseSignature, maxCount));
+                entries.Add((name, signature, count));
             }
 
             if (entries.Count == 0)
