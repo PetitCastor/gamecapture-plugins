@@ -26,6 +26,24 @@ public class SignaturePluginTests
         Assert.Contains("\"count\":2", services.Emitted[1].RawText);
     }
 
+    // The overlay template reads Fields, not RawText: OverlayRecordSink falls back to the whole
+    // JSON blob the moment a {placeholder} misses, so these key names are a display contract.
+    [Fact]
+    public async Task Observation_carries_fields_for_overlay_templates()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "7200").Build(), services), default);
+
+        var fields = Assert.Single(services.Emitted).Fields;
+        Assert.NotNull(fields);
+        Assert.Equal("Bexalite", fields["name"]);
+        Assert.Equal("ore", fields["kind"]);
+        Assert.Equal("2", fields["count"]);
+        Assert.Equal("7200", fields["signature"]);
+    }
+
     [Fact]
     public async Task Invalid_after_observation_emits_one_clear()
     {

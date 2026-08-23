@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using GameCapture.Sdk;
 using SignaturePluginRois = global::SignaturePlugin.Rois;
@@ -62,7 +63,21 @@ public sealed class SignaturePlugin : IGameCapturePlugin
 
         var observation = JsonSerializer.Serialize(new SignatureEvent(match.Name, match.Kind, signature, match.Count, match.Delta), JsonOptions);
         if (!force && observation == _lastObservation) return;
-        ctx.Services.Emit(new CaptureRecord(ctx.Tick.Timestamp, Name, trigger, observation));
+
+        // Fields carry the same match as named strings so an overlay template can interpolate
+        // {name}/{count} instead of falling back to RawText, which is the whole JSON blob. Formatted
+        // invariant: these are display and column values, not a locale-sensitive presentation.
+        ctx.Services.Emit(new CaptureRecord(ctx.Tick.Timestamp, Name, trigger, observation)
+        {
+            Fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["name"] = match.Name,
+                ["kind"] = match.Kind,
+                ["signature"] = signature.ToString(CultureInfo.InvariantCulture),
+                ["count"] = match.Count.ToString(CultureInfo.InvariantCulture),
+                ["delta"] = match.Delta.ToString(CultureInfo.InvariantCulture),
+            },
+        });
         _lastObservation = observation; _hasObservation = true;
     }
 
