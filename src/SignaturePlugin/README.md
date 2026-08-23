@@ -13,7 +13,7 @@ signature number. Before trusting replay parity, calibrate that rectangle agains
 1. Get an engine running with `--save-frames`, either a
    [release zip](https://github.com/PetitCastor/gamecapture-engine/releases)
    (`GameCapture.Engine-vX.Y.Z-win-x64.zip`) or a clone of the engine repo built locally.
-2. Set `"saveDebugFrames": true` in `config.json`. The engine saves full replay frames;
+2. Set `"saveDebugFrames": true` in `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json`. The engine saves full replay frames;
    `saveDebugFrames` saves the cropped ROI dumps used to tune the rectangle.
 3. Run the plugin with `--verbose` against the running engine. In game, open scan mode with a
    known ore, asteroid, or debris signature visible.
@@ -52,8 +52,8 @@ Capture known frames with an active engine:
 
 The test project links those files to `Fixtures/Replay/scan-signature/` in the test output. Point
 `GAMECAPTURE_ENGINE_PATH` at a built or unpacked `GameCapture.Engine.exe`, remove the `Skip`, and
-run the `Integration` test. The test loads `signature-table.json` from the output directory, replays
-each manifest-labelled PNG as its own one-frame corpus, and asserts the emitted `{ name, kind }`
+run the `Integration` test. The test loads the embedded default table, replays each
+manifest-labelled PNG as its own one-frame corpus, and asserts the emitted `{ name, kind }`
 observation against the manifest. It also checks that every copied PNG has exactly one manifest
 entry.
 
@@ -65,14 +65,14 @@ default for future users; note the source or patch context in the PR body.
 
 ## Output
 
-The shipped `config.json` appends every signature observation to
-`captures/signatures.jsonl`, beside the config file. Each observation line is one GameCapture
+The default config created at `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` appends every
+signature observation to `captures/signatures.jsonl`, beside that config file. Each observation line is one GameCapture
 record whose `rawText` is the structured signature JSON emitted by this plugin. Repeated unchanged
 observations are de-duplicated; the cleared record is retained as `kind: "Cleared"` with empty
 `rawText` so a consumer can remove stale state.
 
 This is a local JSON Lines file only: it does not send data over the network or display an overlay.
-Change the `outputs` array in `config.json` to disable it (`[]`) or choose another supported sink;
+Change the `outputs` array in that local `config.json` to disable it (`[]`) or choose another supported sink;
 the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
 lists the JSON, CSV, HTTP, and optional overlay configurations.
 
@@ -96,5 +96,5 @@ manifest described above.
 dotnet run --project . -- --verbose
 ```
 
-Needs a `GameCapture.Engine` running first, listening on the pipe name in `config.json`
+Needs a `GameCapture.Engine` running first, listening on the pipe name in `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json`
 (`pipeName`, must match the engine's).

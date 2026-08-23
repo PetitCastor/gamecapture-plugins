@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="config.json" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="config.json" />
   </ItemGroup>
 
   <ItemGroup>
