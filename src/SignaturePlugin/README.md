@@ -71,13 +71,20 @@ record whose `rawText` is the structured signature JSON emitted by this plugin. 
 observations are de-duplicated; the cleared record is retained as `kind: "Cleared"` with empty
 `rawText` so a consumer can remove stale state.
 
-This is a local JSON Lines file only: it does not send data over the network or display an overlay.
-Change the `outputs` array in `config.json` to disable it (`[]`) or choose another supported sink;
+It also configures an `overlay` sink, so a matched signature is drawn on screen as
+`{name} x{count}` and hidden again when the signature clears. `Program.cs` registers
+`OverlaySinkFactory` through `PluginHostOptions.OverlayFactory`, which is what makes that entry
+live: an `overlay` output with no factory registered is silently a no-op. The overlay draws only
+from `CaptureRecord.Fields`, so a template placeholder that is not one of `name`, `kind`,
+`signature`, `count`, or `delta` falls back to printing the raw JSON.
+
+No data leaves the machine: the JSON sink is a local file and the overlay is a local window.
+Change the `outputs` array in `config.json` to disable either (`[]`) or choose another supported sink;
 the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
 lists the JSON, CSV, HTTP, and optional overlay configurations.
 
-When an overlay sink is configured, matched observations show the configured template and
-`EmitCleared` hides stale text after the signature becomes unknown or disappears. The plugin also
+Matched observations show the configured template and `EmitCleared` hides stale text after the
+signature becomes unknown or disappears. The plugin also
 preserves that clear across dropped ticks, so a gap cannot leave an old signature stuck on screen.
 
 ## Build & Test

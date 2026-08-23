@@ -7,6 +7,16 @@
       "path": "captures/signatures.jsonl",
       "dedupeOnChange": true,
       "recordClears": true
+    },
+    {
+      "type": "overlay",
+      "overlay": {
+        "template": "{name} x{count}",
+        "offsetY": 36,
+        "lingerMs": 5000,
+        "foregroundColor": "#FFFFFF",
+        "backgroundColor": "#111827"
+      }
     }
   ]
 }
