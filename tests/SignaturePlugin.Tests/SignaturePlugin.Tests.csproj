@@ -26,9 +26,10 @@
     <PackageReference Include="GameCapture.Sdk.Testing" Version="1.1.0" />
   </ItemGroup>
 
-  <!-- Future scan-mode corpus for TASK-ORE-05. Keep the source under tests\fixtures\corpus so it
-       mirrors the existing Refinery parity layout, but link it beside the test assembly where
-       ReplayCorpus.Resolve("Fixtures/Replay/scan-signature") expects it. -->
+  <!-- Scan-mode corpus for ReplayParityTests.ScanSignature_corpus_matches_manifest_records. Kept
+       under tests\fixtures\corpus so it mirrors the existing Refinery parity layout, but linked
+       beside the test assembly where ReplayCorpus.Resolve("Fixtures/Replay/scan-signature")
+       expects it. -->
   <ItemGroup>
     <None Include="..\fixtures\corpus\scan-signature\**\*.png" Link="Fixtures\Replay\scan-signature\%(RecursiveDir)%(FileName)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\corpus\scan-signature\**\manifest.json" Link="Fixtures\Replay\scan-signature\%(RecursiveDir)%(FileName)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
