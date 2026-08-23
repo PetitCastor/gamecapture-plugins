@@ -21,11 +21,10 @@ public class ReplayParityTests
 
     /// <summary>
     /// Parity smoke test: spawns a real GameCapture.Engine.exe replaying a PNG corpus and drives
-    /// this plugin through its real GameCapturePluginHost path. Skipped until the user captures
-    /// known signature frames and labels them in <c>manifest.json</c>; see README.md for the
-    /// capture and calibration workflow.
+    /// this plugin through its real GameCapturePluginHost path. Needs GAMECAPTURE_ENGINE_PATH
+    /// pointed at a built or unpacked GameCapture.Engine.exe and a Windows OCR language pack.
     /// </summary>
-    [Fact(Skip = "needs scan-signature corpus + manifest + GAMECAPTURE_ENGINE_PATH")]
+    [Fact]
     [Trait("Category", "Integration")]
     public async Task ScanSignature_corpus_matches_manifest_records()
     {
@@ -60,6 +59,16 @@ public class ReplayParityTests
                 using var json = JsonDocument.Parse(record.RawText);
                 Assert.Equal(expected.Name, json.RootElement.GetProperty("name").GetString());
                 Assert.Equal(expected.Kind, json.RootElement.GetProperty("kind").GetString());
+
+                // Optional: name/kind alone let a misread that lands on a different cluster count
+                // of the same ore (e.g. a doubled signature) pass unnoticed, since TryMatch
+                // searches unit signature x count 1-6. Frames whose manifest entry pins the exact
+                // reading close that gap; older or hand-labelled entries that only know the ore
+                // name still work without them.
+                if (expected.Signature is { } signature)
+                    Assert.Equal(signature, json.RootElement.GetProperty("signature").GetDouble());
+                if (expected.Count is { } count)
+                    Assert.Equal(count, json.RootElement.GetProperty("count").GetInt32());
             }
             finally
             {
@@ -68,7 +77,7 @@ public class ReplayParityTests
         }
     }
 
-    private static IReadOnlyList<(string File, string Name, string Kind)> ReadManifest(string path)
+    private static IReadOnlyList<(string File, string Name, string Kind, double? Signature, int? Count)> ReadManifest(string path)
     {
         Assert.True(File.Exists(path), $"manifest not copied to the test output: {path}");
 
@@ -78,18 +87,22 @@ public class ReplayParityTests
             frames.ValueKind == JsonValueKind.Array,
             "manifest must contain a 'frames' array");
 
-        var expected = new List<(string File, string Name, string Kind)>();
+        var expected = new List<(string File, string Name, string Kind, double? Signature, int? Count)>();
         foreach (var frame in frames.EnumerateArray())
         {
             var file = frame.GetProperty("file").GetString() ?? string.Empty;
             var name = frame.GetProperty("name").GetString() ?? string.Empty;
             var kind = frame.GetProperty("kind").GetString() ?? string.Empty;
+            double? signature = frame.TryGetProperty("signature", out var signatureElement)
+                ? signatureElement.GetDouble() : null;
+            int? count = frame.TryGetProperty("count", out var countElement)
+                ? countElement.GetInt32() : null;
 
             Assert.False(string.IsNullOrWhiteSpace(file), "manifest frame file is required");
             Assert.False(string.IsNullOrWhiteSpace(name), "manifest frame name is required");
             Assert.False(string.IsNullOrWhiteSpace(kind), "manifest frame kind is required");
 
-            expected.Add((file, name, kind));
+            expected.Add((file, name, kind, signature, count));
         }
 
         return expected;
@@ -97,7 +110,7 @@ public class ReplayParityTests
 
     private static void AssertManifestLabelsEveryPng(
         string corpusDir,
-        IReadOnlyList<(string File, string Name, string Kind)> frames)
+        IReadOnlyList<(string File, string Name, string Kind, double? Signature, int? Count)> frames)
     {
         var manifestFiles = frames
             .Select(f => NormalizeManifestPath(f.File))

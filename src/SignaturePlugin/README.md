@@ -30,7 +30,8 @@ the hosted plugin-authoring guide:
 ## Replay Corpus
 
 `tests/SignaturePlugin.Tests/ReplayParityTests.cs` contains the carried integration gate for this
-plugin. It is intentionally skipped until a real corpus exists.
+plugin. It runs against the `scan-signature` corpus below; a plugin with no corpus yet should keep
+this test `Skip`-attributed rather than deleting it.
 
 Capture known frames with an active engine:
 
@@ -45,17 +46,22 @@ Capture known frames with an active engine:
 ```json
 {
   "frames": [
-    { "file": "0001-bexalite.png", "name": "Bexalite", "kind": "ore" }
+    { "file": "0001-bexalite.png", "name": "Bexalite", "kind": "ore", "signature": 3600, "count": 1 }
   ]
 }
 ```
 
+`signature` and `count` are optional: add them when you know the exact reading a frame should
+produce (from the source table, not a guess) so the test also pins the emitted `signature`/`count`
+fields, not just `name`/`kind` — those two alone let a misread that lands on a different cluster
+count of the *same* ore (e.g. a doubled signature) pass unnoticed, since matching searches unit
+signature x count 1-6. Omit them for a hand-labelled frame where only the ore name is known.
+
 The test project links those files to `Fixtures/Replay/scan-signature/` in the test output. Point
-`GAMECAPTURE_ENGINE_PATH` at a built or unpacked `GameCapture.Engine.exe`, remove the `Skip`, and
-run the `Integration` test. The test loads the embedded default table, replays each
-manifest-labelled PNG as its own one-frame corpus, and asserts the emitted `{ name, kind }`
-observation against the manifest. It also checks that every copied PNG has exactly one manifest
-entry.
+`GAMECAPTURE_ENGINE_PATH` at a built or unpacked `GameCapture.Engine.exe` and run the `Integration`
+test. It loads the embedded default table, replays each manifest-labelled PNG as its own one-frame
+corpus, and asserts the emitted observation against the manifest. It also checks that every copied
+PNG has exactly one manifest entry.
 
 On first launch, the plugin creates a user-editable default table at
 `%LOCALAPPDATA%\GameCapture\SignaturePlugin\signature-table.json`. It preserves that file on
@@ -94,8 +100,9 @@ dotnet build
 dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj --filter "Category!=Integration"
 ```
 
-The one test tagged `Integration` is skipped until you have the `scan-signature` replay corpus and
-manifest described above.
+The one test tagged `Integration` needs `GAMECAPTURE_ENGINE_PATH` and a Windows OCR language pack;
+run with `dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj` (no filter) once
+both are available.
 
 ## Run
 
