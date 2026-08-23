@@ -21,11 +21,10 @@ public class ReplayParityTests
 
     /// <summary>
     /// Parity smoke test: spawns a real GameCapture.Engine.exe replaying a PNG corpus and drives
-    /// this plugin through its real GameCapturePluginHost path. Skipped until the user captures
-    /// known signature frames and labels them in <c>manifest.json</c>; see README.md for the
-    /// capture and calibration workflow.
+    /// this plugin through its real GameCapturePluginHost path. Needs GAMECAPTURE_ENGINE_PATH
+    /// pointed at a built or unpacked GameCapture.Engine.exe and a Windows OCR language pack.
     /// </summary>
-    [Fact(Skip = "needs scan-signature corpus + manifest + GAMECAPTURE_ENGINE_PATH")]
+    [Fact]
     [Trait("Category", "Integration")]
     public async Task ScanSignature_corpus_matches_manifest_records()
     {
