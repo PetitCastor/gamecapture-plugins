@@ -4,4 +4,6 @@ using GameCapture.Sdk;
 // process only supplies the plugin. The host loads config.json itself (PluginHostOptions.ConfigFileName
 // defaults to "config.json") for the two settings every plugin has: pipeName and saveDebugFrames.
 var table = SignaturePlugin.SignatureTable.LoadUserFile();
-return await GameCapturePluginHost.RunAsync(new SignaturePlugin.SignaturePlugin(table), args);
+var config = PluginConfig.Load<SignaturePluginConfig>(UserConfig.Ensure());
+return await GameCapturePluginHost.RunAsync(new SignaturePlugin.SignaturePlugin(table), args,
+    new PluginHostOptions { Config = config });

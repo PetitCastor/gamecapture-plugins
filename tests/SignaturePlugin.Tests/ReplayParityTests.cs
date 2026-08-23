@@ -46,7 +46,7 @@ public class ReplayParityTests
                 {
                     EnginePath = EngineLocator.Resolve(),
                     CorpusDir = oneFrameCorpus,
-                    Plugin = new SignaturePlugin(SignatureTable.LoadFrom(Path.Combine(AppContext.BaseDirectory, "signature-table.json"))),
+                    Plugin = new SignaturePlugin(SignatureTable.LoadEmbedded()),
                 });
 
                 Assert.Equal(0, result.ExitCode);
