@@ -3,7 +3,7 @@ using GameCapture.Sdk;
 
 // The whole lifecycle — connect, subscribe, feed ticks, reconnect, summarise — is the host's; this
 // process only supplies the plugin, its config, and the one flag the host does not know about.
-var config = PluginConfig.Load<RefineryConfig>(Path.Combine(AppContext.BaseDirectory, "config.json"));
+var config = PluginConfig.Load<RefineryConfig>(UserConfig.Ensure());
 
 // Captured by the arg handler below and read lazily on the first connect (RefineryPlugin resolves
 // its ledger target only once the engine has said whether it is replaying). -1/null when absent; a
