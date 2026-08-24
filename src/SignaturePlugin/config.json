@@ -16,7 +16,7 @@
       "overlay": {
         "template": "{name} x{count}",
         "offsetY": 36,
-        "lingerMs": 5000,
+        "lingerMs": 0,
         "foregroundColor": "#FFFFFF",
         "backgroundColor": "#111827"
       }

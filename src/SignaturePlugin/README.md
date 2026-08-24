@@ -95,8 +95,17 @@ It is now added on the next run, once. Whatever you do to it afterwards stands: 
 empty `outputs` entirely, and it stays that way through later upgrades.
 
 Matched observations show the configured template and `EmitCleared` hides stale text after the
-signature becomes unknown or disappears. The plugin also
-preserves that clear across dropped ticks, so a gap cannot leave an old signature stuck on screen.
+signature becomes unknown or disappears. A single missed OCR tick is expected and does not hide the
+overlay — only a confirmed absence (several consecutive misses) does. The plugin also preserves that
+clear across dropped ticks and a lost/reconnecting session, so a gap cannot leave an old signature
+stuck on screen.
+
+**Existing installs:** the shipped `overlay.lingerMs` is `0` — the overlay stays up until an explicit
+clear rather than auto-hiding on a timer, which is what lets it hold steady past 5 s instead of
+vanishing mid-read. Because `ConfigSeed`'s merge never changes a value you already have, this reaches
+**new** installs only. If you already ran this plugin before this change, edit
+`%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` by hand and change the overlay entry's
+`"lingerMs"` to `0` — otherwise the overlay will still vanish 5 s into a stable reading.
 
 ## Build & Test
 

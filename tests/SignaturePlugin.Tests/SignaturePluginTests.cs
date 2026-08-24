@@ -45,31 +45,123 @@ public class SignaturePluginTests
     }
 
     [Fact]
-    public async Task Invalid_after_observation_emits_one_clear()
+    public async Task Invalid_after_observation_emits_one_clear_only_once_confirmed()
     {
         var plugin = new SignaturePlugin();
         var services = new FakePluginServices();
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
-        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
-        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
 
-        Assert.Single(services.Emitted);
+        // ConfirmTicks (3) invalid reads are required before the overlay is trusted to have vanished.
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        Assert.Empty(services.Cleared);
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
         var clear = Assert.Single(services.Cleared);
         Assert.Equal("SignaturePlugin", clear.Plugin);
         Assert.Equal(RecordKind.Cleared, clear.Kind);
+
+        // Once confirmed, further invalid reads must not fire a second clear.
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        Assert.Single(services.Cleared);
+
+        Assert.Single(services.Emitted);
     }
 
     [Fact]
-    public async Task Dropped_ticks_then_invalid_read_emits_a_clear()
+    public async Task Dropped_ticks_then_confirmed_invalid_reads_emits_a_clear()
     {
         var plugin = new SignaturePlugin();
         var services = new FakePluginServices();
 
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
         plugin.OnSessionEvent(new SessionEvent.TicksDropped(1));
+
+        // The gap itself is not evidence of absence — still need ConfirmTicks invalid reads after it.
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        Assert.Empty(services.Cleared);
+
         await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
 
         Assert.Single(services.Emitted);
+        Assert.Single(services.Cleared);
+    }
+
+    [Fact]
+    public async Task Single_tick_OCR_misses_do_not_blink_the_overlay()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+
+        Assert.Empty(services.Cleared);
+        Assert.Single(services.Emitted);
+    }
+
+    [Fact]
+    public async Task Changed_signature_mid_stream_emits_immediately()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "7200").Build(), services), default);
+
+        Assert.Equal(2, services.Emitted.Count);
+        Assert.Empty(services.Cleared);
+    }
+
+    [Fact]
+    public async Task Reconnecting_after_an_observation_emits_a_clear()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        plugin.OnSessionEvent(new SessionEvent.Reconnecting(1));
+
+        var clear = Assert.Single(services.Cleared);
+        Assert.Equal("SignaturePlugin", clear.Plugin);
+        Assert.Equal(RecordKind.Cleared, clear.Kind);
+    }
+
+    [Fact]
+    public async Task Reconnecting_with_no_observation_emits_nothing()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        plugin.OnSessionEvent(new SessionEvent.Reconnecting(1));
+
+        Assert.Empty(services.Cleared);
+    }
+
+    // Regression: Reconnecting's clear used to leave a partial away-streak in the debouncer, so
+    // further misses after reconnecting would confirm an absence and clear a second time even though
+    // the overlay was already hidden by the Reconnecting clear.
+    [Fact]
+    public async Task Reconnecting_mid_away_streak_does_not_double_clear()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        plugin.OnSessionEvent(new SessionEvent.Reconnecting(1));
+        Assert.Single(services.Cleared);
+
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+        await plugin.OnTickAsync(Tick(new TickDataBuilder().Text("counter", "nothing").Build(), services), default);
+
         Assert.Single(services.Cleared);
     }
 

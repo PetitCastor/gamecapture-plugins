@@ -21,4 +21,10 @@
     <EmbeddedResource Include="Resources\signature-table.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Own-test grant only, same as MissionPlugin/RefineryPlugin: lets SignaturePlugin.Tests exercise
+         SignatureAbsenceDebouncer directly without making it a public type. -->
+    <InternalsVisibleTo Include="SignaturePlugin.Tests" />
+  </ItemGroup>
+
 </Project>
