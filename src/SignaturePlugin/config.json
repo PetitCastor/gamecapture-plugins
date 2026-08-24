@@ -1,15 +1,18 @@
 {
+  "configVersion": 2,
   "pipeName": "GameCapture.Engine",
   "saveDebugFrames": false,
   "outputs": [
     {
       "type": "json",
+      "addedIn": 1,
       "path": "captures/signatures.jsonl",
       "dedupeOnChange": true,
       "recordClears": true
     },
     {
       "type": "overlay",
+      "addedIn": 2,
       "overlay": {
         "template": "{name} x{count}",
         "offsetY": 36,

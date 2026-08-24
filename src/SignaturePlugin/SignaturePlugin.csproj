@@ -11,9 +11,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GameCapture.Sdk" Version="1.1.0" />
-    <PackageReference Include="GameCapture.Contracts" Version="1.1.0" />
-    <PackageReference Include="GameCapture.Sdk.Overlay" Version="1.1.0" />
+    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
+    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
+    <PackageReference Include="GameCapture.Sdk.Overlay" Version="1.*" />
   </ItemGroup>
 
   <ItemGroup>
