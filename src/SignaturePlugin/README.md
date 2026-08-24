@@ -89,6 +89,11 @@ Change the `outputs` array in that local `config.json` to disable either (`[]`) 
 the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
 lists the JSON, CSV, HTTP, and optional overlay configurations.
 
+A config file written before the overlay existed does not have that entry, and earlier versions
+only ever wrote `config.json` when it was missing — so upgrading left the overlay silently absent.
+It is now added on the next run, once. Whatever you do to it afterwards stands: delete the entry, or
+empty `outputs` entirely, and it stays that way through later upgrades.
+
 Matched observations show the configured template and `EmitCleared` hides stale text after the
 signature becomes unknown or disappears. The plugin also
 preserves that clear across dropped ticks, so a gap cannot leave an old signature stuck on screen.
