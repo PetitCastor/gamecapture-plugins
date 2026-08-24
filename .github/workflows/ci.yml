@@ -51,8 +51,10 @@ jobs:
       # `Skip`-attributed pending the outstanding in-game corpus capture ([USER ACTION], see
       # 00-OVERVIEW.md), so it reports skipped rather than passed. Do not read a green run here as
       # proof Mission parity executed; check the skip count.
+      # Serialize test projects: xUnit collections cannot coordinate the Windows OCR engine
+      # processes spawned by separate test assemblies.
       - name: Test
-        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal -m:1
 
       # A plugin owns parsing and nothing else: it must not name a transport type (Grpc,
       # RpcException), the wire proto namespace, or the engine assembly. `dotnet build` cannot catch

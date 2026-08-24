@@ -70,8 +70,9 @@ jobs:
       - name: Build
         run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
 
+      # Match CI's project serialization for the replay tests' Windows OCR engine processes.
       - name: Test
-        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal
+        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal -m:1
 
       # Keep the release gate aligned with CI: build success alone cannot catch a plugin coupling
       # itself to engine/transport internals.
