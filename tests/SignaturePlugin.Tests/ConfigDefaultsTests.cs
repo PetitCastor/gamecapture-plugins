@@ -109,6 +109,22 @@ public class ConfigDefaultsTests : IDisposable
         Assert.Equal("{name} x{count}", overlay["overlay"]!["template"]!.GetValue<string>());
     }
 
+    /// <summary>
+    /// Load-bearing: visibility is driven by observation/clear edges (the absence debouncer,
+    /// <c>Reconnecting</c>) rather than a timer. A nonzero linger would race that edge-driven clear
+    /// and hide a still-current reading before its time.
+    /// </summary>
+    [Fact]
+    public void TheOverlayItShips_HasNoLinger()
+    {
+        var path = Seed();
+
+        var overlay = (JsonNode.Parse(File.ReadAllText(path))!["outputs"] as JsonArray)!
+            .First(node => node!["type"]!.GetValue<string>() == "overlay")!;
+
+        Assert.Equal(0, overlay["overlay"]!["lingerMs"]!.GetValue<int>());
+    }
+
     [Fact]
     public void TheShippedDefault_LoadsThroughPluginConfig()
     {

@@ -10,8 +10,9 @@ public sealed class SignaturePlugin : IGameCapturePlugin
     private const double MatchTolerance = 0.02;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly SignatureTable _table;
+    private readonly SignatureAbsenceDebouncer _absence = new();
+    private IPluginServices? _services;
     private string? _lastObservation;
-    private bool _hasObservation;
 
     public SignaturePlugin(SignatureTable? table = null) => _table = table ?? SignatureTable.LoadEmbedded();
     public string Name => "SignaturePlugin";
@@ -42,24 +43,51 @@ public sealed class SignaturePlugin : IGameCapturePlugin
     {
         // Force the first post-gap observation through, but keep the active-state flag until an
         // invalid reading can clear it. Otherwise an object that disappeared during the dropped
-        // frames would remain stale in configured sinks forever.
-        if (evt is SessionEvent.TicksDropped) _lastObservation = null;
+        // frames would remain stale in configured sinks forever. The missed frames themselves are not
+        // evidence the badge vanished, so they must not count toward the absence debounce either.
+        if (evt is SessionEvent.TicksDropped)
+        {
+            _lastObservation = null;
+            _absence.ResetStreak();
+        }
+
+        // The session dropped, so the on-screen value is no longer being confirmed by anything —
+        // lingerMs is 0, so nothing else will hide a stale reading. _lastObservation is only ever
+        // non-null once a tick has set _services, so the null-conditional below is belt-and-suspenders.
+        if (evt is SessionEvent.Reconnecting && _lastObservation is not null)
+        {
+            _services?.EmitCleared(DateTime.UtcNow, Name);
+            _lastObservation = null;
+
+            // This clear bypasses the confirm-tick gate, so the debouncer must be told directly —
+            // otherwise it still believes something is visible, and a partial away-streak from before
+            // the disconnect would survive to fire a second, redundant clear a few ticks later.
+            _absence.MarkCleared();
+        }
     }
 
     public IEnumerable<string> SummaryLines() => [$"  last signature: {_lastObservation ?? "none"}"];
 
     private void EmitObservation(TickContext ctx, string text, TriggerKind trigger, bool force)
     {
+        _services = ctx.Services;
         var value = text.Trim();
         if (!SignatureParser.TryParse(value, out var signature) || !_table.TryMatch(signature, MatchTolerance, out var match))
         {
-            if (_hasObservation)
+            // A single momentary OCR miss on this fragile crop is expected and must not be mistaken
+            // for the badge actually vanishing — only a confirmed absence clears the overlay. Within
+            // the grace window, publish nothing at all: the overlay keeps its current content.
+            if (_absence.ObserveMissing())
             {
                 ctx.Services.EmitCleared(ctx.Tick.Timestamp, Name);
-                _hasObservation = false; _lastObservation = null;
+                _lastObservation = null;
             }
             return;
         }
+
+        // Counts as proof of presence even when the reading is unchanged and nothing is emitted below
+        // — a stable value must keep the overlay's disappearance debounce from ever tripping.
+        _absence.ObserveMatch();
 
         var observation = JsonSerializer.Serialize(new SignatureEvent(match.Name, match.Kind, signature, match.Count, match.Delta), JsonOptions);
         if (!force && observation == _lastObservation) return;
@@ -78,7 +106,7 @@ public sealed class SignaturePlugin : IGameCapturePlugin
                 ["delta"] = match.Delta.ToString(CultureInfo.InvariantCulture),
             },
         });
-        _lastObservation = observation; _hasObservation = true;
+        _lastObservation = observation;
     }
 
     private sealed record SignatureEvent(string? Name, string? Kind, double? Signature, int Count, double? Delta);
