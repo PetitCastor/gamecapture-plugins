@@ -70,9 +70,22 @@ public sealed class SignatureTable
 
     /// <summary>
     /// Matches the closest one-to-six-ore cluster derived from the listed unit signatures.
-    /// Equal-distance candidates are ambiguous and therefore return false rather than silently
-    /// selecting one ore cluster over another.
     /// </summary>
+    /// <remarks>
+    /// An equal-distance runner-up does not fail the match; it is reported alongside the winner in
+    /// <see cref="SignatureMatch.AlternateName"/>, and the caller shows both rather than picking one.
+    /// Failing outright was worse than it sounds: 19200 is a legitimate reading (Savrilium x6 and
+    /// Aslarite x5 derive the same total) and the plugin scored the failure as the badge having
+    /// vanished, so scanning one of those rocks hid the overlay. Which of two tied candidates is
+    /// reported as the winner is table order, and nothing more — treat the pair as unordered.
+    /// </remarks>
+    /// <param name="tolerance">
+    /// The largest ABSOLUTE distance from a derived cluster total that still counts as that cluster.
+    /// It was once a fraction of the total, which widened the window precisely where the derived grid
+    /// is densest — at six ores, totals sit 90 apart while 2% of the total is ±500 — so high-count
+    /// clusters were the readings most likely to be identified as the wrong ore.
+    /// <c>SignaturePlugin.MatchTolerance</c> carries the value the plugin passes and why.
+    /// </param>
     public bool TryMatch(double signature, double tolerance, out SignatureMatch match)
     {
         match = default;
@@ -80,12 +93,16 @@ public sealed class SignatureTable
             return false;
 
         var found = false;
-        var ambiguous = false;
         var bestDelta = double.PositiveInfinity;
         string? bestName = null;
         var bestUnitSignature = 0.0;
         var bestResolvedSignature = 0.0;
         var bestCount = 0;
+
+        // The runner-up is only kept while it ties the current best exactly; a strictly better
+        // candidate later in the walk discards it, which is why it is cleared in that branch too.
+        string? tiedName = null;
+        var tiedCount = 0;
 
         foreach (var entry in _entries)
         {
@@ -97,28 +114,29 @@ public sealed class SignatureTable
                 if (absoluteDelta < bestDelta)
                 {
                     found = true;
-                    ambiguous = false;
                     bestDelta = absoluteDelta;
                     bestName = entry.Name;
                     bestUnitSignature = entry.UnitSignature;
                     bestResolvedSignature = resolvedSignature;
                     bestCount = count;
+                    tiedName = null;
+                    tiedCount = 0;
                 }
-                else if (absoluteDelta == bestDelta)
+                else if (absoluteDelta == bestDelta && tiedName is null)
                 {
-                    ambiguous = true;
+                    tiedName = entry.Name;
+                    tiedCount = count;
                 }
             }
         }
 
-        if (!found || ambiguous || bestName is null ||
-            bestDelta > tolerance * bestResolvedSignature)
+        if (!found || bestName is null || bestDelta > tolerance)
         {
             return false;
         }
 
         match = new SignatureMatch(bestName, "ore", bestUnitSignature, bestCount,
-            signature - bestResolvedSignature);
+            signature - bestResolvedSignature, tiedName, tiedCount);
         return true;
     }
 
