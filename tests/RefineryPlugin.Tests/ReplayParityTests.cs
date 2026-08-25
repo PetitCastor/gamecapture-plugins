@@ -46,7 +46,36 @@ public class ReplayParityTests(ITestOutputHelper output)
             var order = Assert.Single(ledger.All);
             Assert.Equal(OrderState.Collected, order.State);
             Assert.Equal(Completeness.Complete, order.Completeness);
+
+            // TASK-RFN-01: assert the four real rows are present and correct, not just the
+            // aggregate verdict — this corpus regressed silently through exactly that gap (one
+            // material row got dropped by a parser bug, and the remaining checksum still fell
+            // within ChecksumTolerance's slack, so a Completeness-only assertion kept passing
+            // while a row went missing). Expected values confirmed against a diagnostic
+            // OcrPipeline.ReadRegionDetailedAsync probe of the real engine output for this corpus
+            // (tasks/TASK-RFN-01-*.md).
+            //
+            // Deliberately NOT asserting order.Materials.Count: this corpus's SETUP panel also has
+            // two unrelated, pre-existing OCR misreads of its CORUNDUM row (garbled two different
+            // ways across its two sightings, e.g. ")ORUNDIJM (RAW)" vs. "-'ORUNDUM (RAW)" — no
+            // shared name token with each other or with "CORUNDUM", so OrderMatcher.SameMaterial
+            // can't merge them and they survive as extra, separately-tracked rows). That's a real
+            // OCR-quality limitation with no general, reliable pattern to filter on — a known
+            // limitation tracked in tasks/TASK-RFN-01-*.md, not something to paper over here.
+            AssertYield(FindMaterial(order, "TORITE", 262), 50);
+            AssertYield(FindMaterial(order, "TORITE", 785), 70);
+            AssertYield(FindMaterial(order, "CORUNDUM", 665), 110);
+            AssertYield(FindMaterial(order, "ALUMINUM", 318), 71);
         });
+    }
+
+    // FindMaterial's predicate already pins Name and Quality, so only YieldCscu is left to check.
+    private static OrderMaterial FindMaterial(WorkOrder order, string name, int quality)
+        => Assert.Single(order.Materials, m => m.Name == name && m.Quality == quality);
+
+    private static void AssertYield(OrderMaterial material, int yieldCscu)
+    {
+        Assert.Equal(yieldCscu, material.YieldCscu);
     }
 
     [Fact]
