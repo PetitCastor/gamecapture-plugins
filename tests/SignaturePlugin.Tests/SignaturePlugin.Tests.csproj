@@ -23,7 +23,7 @@
     <ProjectReference Include="..\..\src\SignaturePlugin\SignaturePlugin.csproj" />
     <!-- TickDataBuilder, FakePluginServices, ReplayHarness, EngineLocator. Brings GameCapture.Sdk
          and GameCapture.Contracts transitively. -->
-    <PackageReference Include="GameCapture.Sdk.Testing" Version="1.1.0" />
+    <PackageReference Include="GameCapture.Sdk.Testing" Version="1.1.17" />
   </ItemGroup>
 
   <!-- Scan-mode corpus for ReplayParityTests.ScanSignature_corpus_matches_manifest_records. Kept
