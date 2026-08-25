@@ -29,6 +29,17 @@ public static class Rois
     /// (e.g. a six-digit cluster total) grows left toward the pin — the tighter margin — so watch
     /// that direction first if OCR starts missing again.
     /// </para>
+    /// <para>
+    /// That warning has since come true, and this rect is KNOWN TO BE TOO TIGHT for five-digit
+    /// cluster totals. A live run on 2026-08-24 scanning 21,425 and 19,500 read 17,200 back as
+    /// "7,200" — the leading digit clipped off entirely, not garbled — and rendered the thousands
+    /// comma as "/" or "k" on roughly half of all non-blank ticks, with about four ticks in ten
+    /// blank on a stationary number. SignatureParser now rejects those reads instead of truncating
+    /// them, which stops the plugin acting on nonsense, but the crop is the actual fault. Recalibrate
+    /// against a --save-frames capture of a five- or six-digit badge, growing this rect LEFT first,
+    /// and verify with a direct OcrPipeline probe rather than by eye: a visually plausible crop of
+    /// this badge reads a plausible WRONG number rather than failing loudly.
+    /// </para>
     /// Scale is the OCR upscale factor — small text needs 2-4.</summary>
     public static readonly RoiSubscription Counter =
         new("counter", new RoiRect(1264, 454, 70, 44), 3.0, RoiKind.Text);

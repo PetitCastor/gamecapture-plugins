@@ -8,7 +8,13 @@ namespace SignaturePlugin;
 /// Same philosophy as <see cref="SignatureAbsenceDebouncer"/>, applied to the value rather than to its
 /// presence: the first reading is trusted immediately — the overlay must still appear the moment a scan
 /// completes — and only a *change* has to earn it, by repeating on <see cref="ChangeConfirmTicks"/>
-/// consecutive ticks.
+/// consecutive ticks. Blank ticks are neutral and do not break a challenger's run: on this crop they
+/// are the normal state, not a signal.
+/// </remarks>
+/// <remarks>
+/// It only ever defends a value that resolves to a real cluster — see <see cref="Reset"/>. An accepted
+/// value that matches nothing is not a reading worth protecting, and protecting it turns a recurring
+/// misread into a deadlock rather than merely a wrong frame.
 /// </remarks>
 /// <remarks>
 /// This filter is about *stability*, not accuracy: it guarantees the displayed ore stops changing
@@ -90,22 +96,15 @@ internal sealed class SignatureConsensus
     }
 
     /// <summary>
-    /// The crop yielded no number this tick, so any pending challenger loses its streak.
+    /// There is no incumbent left to defend — the overlay was cleared, or the accepted value turned
+    /// out to resolve to no cluster. The next reading is a fresh sighting and is accepted on the spot.
     /// </summary>
     /// <remarks>
-    /// Without this, "consecutive" would quietly mean "consecutive ticks that parsed", and a
-    /// challenger could accumulate its confirmations either side of a blank frame — which is exactly
-    /// the shape a flickering digit has. The incumbent is untouched: a blank tick is an absence of
-    /// evidence, and deciding what it means about the badge is
-    /// <see cref="SignatureAbsenceDebouncer"/>'s job, not this one's.
+    /// The second case is the load-bearing one. This filter is only worth applying to a value that is
+    /// actually on screen; defending one that resolves to nothing blocks recovery instead of aiding
+    /// it, and does so hardest exactly when OCR is worst — a misread that recurs often enough to be
+    /// accepted also recurs often enough to keep resetting the true reading's streak.
     /// </remarks>
-    public void NoReading() => _candidateStreak = 0;
-
-    /// <summary>
-    /// The overlay was cleared, so there is no incumbent left to defend. The next reading is a fresh
-    /// sighting and is accepted on the spot — without this, the first number of the next scan would be
-    /// held for a tick against a value nothing is displaying any more.
-    /// </summary>
     public void Reset()
     {
         _hasAccepted = false;

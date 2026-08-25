@@ -119,12 +119,11 @@ public sealed class SignaturePlugin : IGameCapturePlugin
 
         if (!SignatureParser.TryParse(raw, out var read))
         {
+            // A blank is deliberately neutral for the consensus: it says nothing about the value, only
+            // about the crop. Breaking a challenger's run on one was tried and reverted — captured live
+            // runs read blank on roughly four ticks in ten even with the badge plainly on screen, so
+            // treating that as a signal just made every genuine rock change slower to adopt.
             ctx.Services.LogVerbose($"signature tick: raw='{raw}' — blank (no number parsed)");
-
-            // A blank breaks a challenger's run of confirmations. Without this, "two consecutive
-            // readings" would mean "two readings with any number of blank ticks between them", which
-            // is precisely the shape a flickering digit has.
-            _consensus.NoReading();
             ObserveAbsence(ctx, SignatureReading.Blank);
             return;
         }
@@ -138,9 +137,17 @@ public sealed class SignaturePlugin : IGameCapturePlugin
         {
             // Digits in the crop are proof the badge is still drawn — only a blank crop is evidence it
             // left. Conflating the two is what used to hide the overlay mid-scan: any reading that
-            // resolved to no cluster, including a legitimate one like 19200 (Savrilium x6 and
-            // Aslarite x5 collide, so it is permanently ambiguous), counted toward the disappearance.
+            // resolved to no cluster counted toward the disappearance.
             LogReading(ctx, raw, read, signature, null);
+
+            // Nothing is displaying this value, so there is nothing here worth defending. The consensus
+            // exists to stop a slip from replacing a GOOD reading; an accepted value that resolves to
+            // no cluster is not one, and holding it actively blocks recovery — a captured live run had
+            // a truncated 21 accepted, and because the same misread recurred every other tick it kept
+            // re-asserting itself and resetting the true reading's confirmation streak, pinning the
+            // overlay on a stale ore for sixteen seconds. Standing down here means the next reading
+            // that actually resolves is shown at once.
+            _consensus.Reset();
             ObserveAbsence(ctx, SignatureReading.Unmatched);
             return;
         }

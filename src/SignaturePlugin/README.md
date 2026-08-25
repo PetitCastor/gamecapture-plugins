@@ -7,6 +7,16 @@ arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `Game
 
 ## Calibrate The Signature ROI
 
+> **Known limitation — `Rois.Counter` is calibrated for a four-digit reading.** It was measured
+> against `3,400` (Lindinium, one ore). A live run scanning five-digit cluster totals (`21,425`,
+> `19,500`) shows the crop is too tight for them: `17,200` came back as `7,200` with the leading
+> digit clipped off entirely, the thousands comma frequently read as `/` or `k`, and roughly four
+> ticks in ten read blank on a number that was not moving. This is the direction `Rois.Counter`'s
+> own doc comment warns about — a wider reading grows left, toward the pin icon and the tighter
+> margin. Recalibrating needs a `--save-frames` capture of a five- or six-digit badge; the parser
+> and overlay now fail cleanly on the garbage rather than acting on it, but that is damage control,
+> not a fix for the crop.
+
 `SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) for the mining-mode RS
 signature number. Before trusting replay parity, calibrate that rectangle against your own capture:
 
@@ -111,6 +121,15 @@ fragile and every wobble used to read as "the badge is gone":
   means the badge is still drawn — one misread digit is enough to land in a gap in the table's
   derived grid, and that must not hide anything. Six consecutive *blank* ticks (3 s at the default
   500 ms scan interval) are required before the overlay is cleared.
+- **A partial read is rejected, not truncated.** `SignatureParser` refuses any token that leaves
+  digits behind, so the captured misread `21/425` fails outright instead of yielding `21`. It also
+  folds `/` to `,`, which is how Windows OCR renders this HUD font's thousands separator about half
+  the time. Returning a prefix was worse than returning nothing: `21` parses, matches no cluster,
+  and was then defended as if it were a real reading.
+- **A value that matches nothing is never defended.** The consensus only protects a reading that is
+  actually on screen. Without that rule an accepted-but-unmatchable value blocks its own replacement,
+  and because the misread producing it recurs, it kept resetting the true reading's confirmation
+  streak — one captured run sat on a stale ore for sixteen seconds that way.
 - **A changed value has to repeat before it is believed.** The first reading of a scan shows
   instantly, but replacing it takes two consecutive identical readings, and a blank tick in between
   breaks the run. This is what stops a single slipped digit from renaming the ore mid-scan — 17200 is

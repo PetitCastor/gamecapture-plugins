@@ -109,34 +109,6 @@ public class SignatureConsensusTests
         Assert.Equal(17240, c.Observe(17240));
     }
 
-    // "Consecutive" has to mean consecutive TICKS, not consecutive ticks that happened to parse.
-    // Otherwise a challenger accumulates its confirmations either side of a blank frame, which is
-    // exactly the shape a flickering digit has.
-    [Fact]
-    public void ABlankTickBreaksAChallengersRun()
-    {
-        var c = new SignatureConsensus();
-        c.Observe(17200);
-
-        Assert.Equal(17200, c.Observe(18200)); // challenger, 1 of 2
-        c.NoReading();                         // crop read nothing — the run is broken
-        Assert.Equal(17200, c.Observe(18200)); // so this is 1 of 2 again, not the confirming tick
-    }
-
-    [Fact]
-    public void ABlankTickDoesNotUnseatTheIncumbent()
-    {
-        var c = new SignatureConsensus();
-        c.Observe(17200);
-
-        c.NoReading();
-        c.NoReading();
-
-        // A blank says nothing about the value; deciding what it means about the badge being on
-        // screen is the absence debouncer's job, not this one's.
-        Assert.Equal(17200, c.Observe(17200));
-    }
-
     [Fact]
     public void Reset_MakesTheNextReadingAFreshSighting()
     {

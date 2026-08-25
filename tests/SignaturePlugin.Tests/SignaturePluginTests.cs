@@ -279,10 +279,11 @@ public class SignaturePluginTests
         Assert.Contains("\"count\":2", services.Emitted[1].RawText);
     }
 
-    // A blank tick between two identical challenger reads must not let the change through: the
-    // consensus counts ticks, not parses.
+    // Blank ticks are neutral for the consensus. Breaking a challenger's run on one was tried and
+    // reverted: captured live runs read blank on roughly four ticks in ten with the badge plainly on
+    // screen, so treating that as a signal only made every genuine rock change slower to adopt.
     [Fact]
-    public async Task A_blank_tick_between_challenger_reads_holds_the_change()
+    public async Task A_blank_tick_between_challenger_reads_does_not_restart_the_count()
     {
         var plugin = new SignaturePlugin();
         var services = new FakePluginServices();
@@ -292,8 +293,47 @@ public class SignaturePluginTests
         await Read(plugin, services, "nothing");
         await Read(plugin, services, "7200");
 
-        Assert.Single(services.Emitted); // still Bexalite x1 — the change never confirmed
+        Assert.Equal(2, services.Emitted.Count);
+        Assert.Contains("\"count\":2", services.Emitted[1].RawText);
         Assert.Empty(services.Cleared);
+    }
+
+    // The sixteen-second deadlock from a captured live run, in miniature. OCR truncated "21/425" to
+    // 21 on roughly every other tick; 21 got accepted, matched nothing, and then kept re-asserting
+    // itself against the true reading, resetting its confirmation streak every time. Two independent
+    // guards now break this: the parser rejects the truncation outright, and an accepted value that
+    // matches nothing is not defended.
+    [Fact]
+    public async Task A_recurring_misread_cannot_deadlock_the_accepted_value()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await Read(plugin, services, "19500");     // Torite x5 on screen
+        await Read(plugin, services, "12345", 2);  // a parseable misread wins the incumbency...
+
+        // ...but it resolves to nothing, so it is not defended: the very next reading that does
+        // resolve is shown at once, rather than needing to out-confirm the garbage.
+        await Read(plugin, services, "21425");
+
+        Assert.Equal(2, services.Emitted.Count);
+        Assert.Contains("\"name\":\"Aluminum\"", services.Emitted[1].RawText);
+        Assert.Empty(services.Cleared);
+    }
+
+    // The other half of that deadlock: a truncating misread must not reach the consensus as a number
+    // at all. "21/425" is the captured live text for 21,425.
+    [Fact]
+    public async Task A_slash_for_comma_misread_reads_as_the_real_number()
+    {
+        var plugin = new SignaturePlugin();
+        var services = new FakePluginServices();
+
+        await Read(plugin, services, "21/425");
+
+        var fields = Assert.Single(services.Emitted).Fields;
+        Assert.NotNull(fields);
+        Assert.Equal("Aluminum x5", fields["cluster"]);
     }
 
     // 19200 is Savrilium x6 and Aslarite x5 alike. It used to resolve to nothing, which counted as the
