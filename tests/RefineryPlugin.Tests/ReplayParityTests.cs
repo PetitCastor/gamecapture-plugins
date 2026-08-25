@@ -126,8 +126,9 @@ public class ReplayParityTests(ITestOutputHelper output)
             // height stopped at five.
             Assert.Equal(10, order.RowsSeen);
 
-            // Each row by its (name, quality) identity, with the yield OCR actually returns. Two
-            // pairs share a name and differ only by quality, which is why FindMaterial keys on both.
+            // Each row by its (name, quality) identity, with the yield OCR actually returns. Four of
+            // this order's five material names appear twice at different qualities (only GOLD and
+            // TUNGSTEN are singletons), which is why FindMaterial keys on the pair and not the name.
             AssertYield(FindMaterial(order, "BEXALITE", 302), 3);
             AssertYield(FindMaterial(order, "BEXALITE", 597), 12);
             AssertYield(FindMaterial(order, "TORITE", 262), 167);
@@ -155,12 +156,15 @@ public class ReplayParityTests(ITestOutputHelper output)
             // YieldList height that swallowed the divider would show up here as well as in the rows.
             Assert.Equal(440, order.TotalYieldCscu);
 
-            // Not Complete, and correctly so on two independent counts: the ten rows as shown on
-            // screen sum to 435 against a 440 total (this order holds more materials than the
-            // container can display at once, which is the genuine truncation the "scroll the list"
-            // nudge exists for), and the two 0-sentinel yields above independently fail the clean
-            // check. Contrast the ROI bug this corpus was added for, which faked that same verdict
-            // on a list that was entirely on screen.
+            // Not Complete, and correctly so — but the arithmetic is worth stating exactly, because
+            // the obvious reading of it is wrong. The ten rows AS SHOWN sum to 435 against a 440
+            // total, and that 5 cSCU gap is real: this order holds more materials than the container
+            // can display at once. But 5 is INSIDE ChecksumTolerance(10) — a truncation worth less
+            // than about a cSCU per visible row is invisible to that check by construction, so the
+            // hidden rows alone would not fail it. What actually fails here is the two 0-sentinel
+            // yields above: they drop the plugin's own sum to 408 (a gap of 32), and independently
+            // fail the !materials.Any(YieldCscu == 0) half of the clean check. Contrast the ROI bug
+            // this corpus was added for, which faked this same verdict on a fully visible list.
             Assert.Equal(Completeness.Partial, order.Completeness);
         });
     }

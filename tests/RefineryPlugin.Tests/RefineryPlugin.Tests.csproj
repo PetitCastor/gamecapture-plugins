@@ -33,8 +33,8 @@
 
   <!-- The replay corpora this plugin's parity tests drive: the monolith's two, plus
        refinery-full-list (a COMPLETED panel filled to its 10-row capacity, which neither monolith
-       corpus exercised - both top out at four rows, so both stayed green while Rois.YieldList
-       covered only five). Scoped one corpus per entry
+       corpus exercised - refinery-confirm tops out at four rows and refinery-ice-rename at one, so
+       both stayed green while Rois.YieldList covered only five). Scoped one corpus per entry
        (not a `corpus\**` catch-all) so another plugin's corpus landing under tests\fixtures\corpus
        doesn't get copied into every other plugin's test output. Copied next to the test assembly
        so ReplayParityTests's relative paths resolve at run time. -->
