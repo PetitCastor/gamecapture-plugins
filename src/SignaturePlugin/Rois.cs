@@ -29,6 +29,11 @@ public static class Rois
     /// (e.g. a six-digit cluster total) grows left toward the pin — the tighter margin — so watch
     /// that direction first if OCR starts missing again.
     /// </para>
+    /// <para>
+    /// That warning has since come true, and this rect was too tight for five-digit cluster
+    /// totals — recalibrated 2026-08-25 (see below) rather than widened, since the root cause was
+    /// OCR channel/scale, not crop size.
+    /// </para>
     /// Scale is 6.0, calibrated 2026-08-25 against a 49-sample falsification benchmark that swept
     /// scale and channel jointly (red channel + Cubic @6.0 scored 47/49 vs. 28/49 at the old 3.0) —
     /// see https://claude.ai/code/artifact/19c5d1b0-4f71-46d4-ad34-086425b07218. Do not turn this

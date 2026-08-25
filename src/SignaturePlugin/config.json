@@ -14,7 +14,7 @@
       "type": "overlay",
       "addedIn": 2,
       "overlay": {
-        "template": "{name} x{count}",
+        "template": "{cluster}",
         "offsetY": 36,
         "lingerMs": 0,
         "foregroundColor": "#FFFFFF",

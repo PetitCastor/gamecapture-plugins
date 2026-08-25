@@ -104,9 +104,13 @@ public class ConfigDefaultsTests : IDisposable
         var overlay = (JsonNode.Parse(File.ReadAllText(path))!["outputs"] as JsonArray)!
             .First(node => node!["type"]!.GetValue<string>() == "overlay")!;
 
-        // Both keys must exist in CaptureRecord.Fields or OverlayRecordSink falls back to dumping
-        // the entire raw JSON record on screen — see the plugins repo's own Fields contract test.
-        Assert.Equal("{name} x{count}", overlay["overlay"]!["template"]!.GetValue<string>());
+        // The key must exist in CaptureRecord.Fields or OverlayRecordSink falls back to dumping the
+        // entire raw JSON record on screen — see the plugins repo's own Fields contract test.
+        //
+        // {cluster} rather than the older "{name} x{count}": those two rendered separately cannot
+        // express an ambiguous total (19200 is Savrilium x6 and Aslarite x5 alike), and printing only
+        // the winner of that coin flip would be a confident wrong answer.
+        Assert.Equal("{cluster}", overlay["overlay"]!["template"]!.GetValue<string>());
     }
 
     /// <summary>

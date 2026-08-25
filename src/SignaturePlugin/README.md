@@ -7,6 +7,16 @@ arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `Game
 
 ## Calibrate The Signature ROI
 
+> **Known limitation — `Rois.Counter` is calibrated for a four-digit reading.** It was measured
+> against `3,400` (Lindinium, one ore). A live run scanning five-digit cluster totals (`21,425`,
+> `19,500`) shows the crop is too tight for them: `17,200` came back as `7,200` with the leading
+> digit clipped off entirely, the thousands comma frequently read as `/` or `k`, and roughly four
+> ticks in ten read blank on a number that was not moving. This is the direction `Rois.Counter`'s
+> own doc comment warns about — a wider reading grows left, toward the pin icon and the tighter
+> margin. Recalibrating needs a `--save-frames` capture of a five- or six-digit badge; the parser
+> and overlay now fail cleanly on the garbage rather than acting on it, but that is damage control,
+> not a fix for the crop.
+
 `SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) for the mining-mode RS
 signature number. Before trusting replay parity, calibrate that rectangle against your own capture:
 
@@ -77,12 +87,21 @@ record whose `rawText` is the structured signature JSON emitted by this plugin. 
 observations are de-duplicated; the cleared record is retained as `kind: "Cleared"` with empty
 `rawText` so a consumer can remove stale state.
 
-It also configures an `overlay` sink, so a matched signature is drawn on screen as
-`{name} x{count}` and hidden again when the signature clears. `Program.cs` registers
-`OverlaySinkFactory` through `PluginHostOptions.OverlayFactory`, which is what makes that entry
-live: an `overlay` output with no factory registered is silently a no-op. The overlay draws only
-from `CaptureRecord.Fields`, so a template placeholder that is not one of `name`, `kind`,
-`signature`, `count`, or `delta` falls back to printing the raw JSON.
+It also configures an `overlay` sink, so a matched signature is drawn on screen as `{cluster}` —
+`Ice x4` — and hidden again when the signature clears. `Program.cs` registers `OverlaySinkFactory`
+through `PluginHostOptions.OverlayFactory`, which is what makes that entry live: an `overlay` output
+with no factory registered is silently a no-op. The overlay draws only from `CaptureRecord.Fields`,
+so a template placeholder that is not one of `cluster`, `alternate`, `name`, `kind`, `signature`,
+`count`, or `delta` falls back to printing the raw JSON.
+
+`{cluster}` rather than `{name} x{count}` because two table entries can derive the same cluster
+total: 19200 is Savrilium x6 and Aslarite x5 alike, and nothing in the number tells them apart. Such
+a reading used to resolve to nothing at all, which the plugin then counted as the badge having
+vanished — so scanning one of those rocks actively hid the overlay. It now renders as
+`Savrilium x6 / Aslarite x5`, and `{alternate}` carries the runner-up on its own (empty string when
+the reading is unambiguous). `name` and `count` still hold the primary candidate alone, so existing
+JSONL consumers are unaffected — but a template built from those two cannot express the tie, and
+printing only the winner of it would be a confident wrong answer.
 
 No data leaves the machine: the JSON sink is a local file and the overlay is a local window.
 Change the `outputs` array in that local `config.json` to disable either (`[]`) or choose another supported sink;
@@ -95,17 +114,62 @@ It is now added on the next run, once. Whatever you do to it afterwards stands: 
 empty `outputs` entirely, and it stays that way through later upgrades.
 
 Matched observations show the configured template and `EmitCleared` hides stale text after the
-signature becomes unknown or disappears. A single missed OCR tick is expected and does not hide the
-overlay — only a confirmed absence (several consecutive misses) does. The plugin also preserves that
-clear across dropped ticks and a lost/reconnecting session, so a gap cannot leave an old signature
-stuck on screen.
+signature disappears. The overlay is deliberately hard to dislodge, because OCR on this crop is
+fragile and every wobble used to read as "the badge is gone":
 
-**Existing installs:** the shipped `overlay.lingerMs` is `0` — the overlay stays up until an explicit
-clear rather than auto-hiding on a timer, which is what lets it hold steady past 5 s instead of
-vanishing mid-read. Because `ConfigSeed`'s merge never changes a value you already have, this reaches
-**new** installs only. If you already ran this plugin before this change, edit
-`%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` by hand and change the overlay entry's
-`"lingerMs"` to `0` — otherwise the overlay will still vanish 5 s into a stable reading.
+- **Only a blank crop is evidence of absence.** A legible number that resolves to no ore cluster
+  means the badge is still drawn — one misread digit is enough to land in a gap in the table's
+  derived grid, and that must not hide anything. Six consecutive *blank* ticks (3 s at the default
+  500 ms scan interval) are required before the overlay is cleared.
+- **A partial read is rejected, not truncated.** `SignatureParser` refuses any token that leaves
+  digits behind, so the captured misread `21/425` fails outright instead of yielding `21`. It also
+  folds `/` to `,`, which is how Windows OCR renders this HUD font's thousands separator about half
+  the time. Returning a prefix was worse than returning nothing: `21` parses, matches no cluster,
+  and was then defended as if it were a real reading.
+- **A value that matches nothing is never defended.** The consensus only protects a reading that is
+  actually on screen. Without that rule an accepted-but-unmatchable value blocks its own replacement,
+  and because the misread producing it recurs, it kept resetting the true reading's confirmation
+  streak — one captured run sat on a stale ore for sixteen seconds that way.
+- **A changed value has to repeat before it is believed.** The first reading of a scan shows
+  instantly, but replacing it takes two consecutive identical readings, and a blank tick in between
+  breaks the run. This is what stops a single slipped digit from renaming the ore mid-scan — 17200 is
+  Ice x4 exactly, while 18200 is one 7→8 slip away and sits close to Bexalite x5.
+- **Cluster matching uses an absolute tolerance,** not a percentage of the cluster total. A relative
+  window widened exactly where the derived grid is densest, so six-ore clusters were the readings
+  most likely to be named as the wrong ore.
+- **A brief reconnect does not clear.** Only a sustained outage (roughly two seconds of failed
+  dials) hides the overlay; a stream that drops and comes straight back says nothing about what is
+  on screen.
+
+As a backstop, the overlay cannot outlive its last real match by more than 20 ticks (~10 s),
+whatever the crop is yielding — otherwise a rect that has drifted off the badge, or a table gone
+stale against a game patch, would pin a dead value on screen indefinitely. The plugin also preserves
+its clear across dropped ticks and a lost session, so a gap cannot leave an old signature stuck.
+
+None of this can rescue a reading that is *steadily* wrong. The derived grid is dense — Corundum x3
+is 12675 and Quantanium x4 is 12680, five apart — so a persistent misread can land exactly on a
+neighbouring cluster with a delta of zero, indistinguishable from a correct reading. The debounce
+and the consensus buy stability against wobble; accuracy against a stable misread would need a
+better crop or a second ROI, not a tighter threshold.
+
+Running with `--verbose` prints one line per tick tracing the whole chain the overlay depends on:
+the raw OCR text, the number parsed from it, the value actually being acted on (`held=` appears
+exactly on the ticks a change is being refused), and what the table made of it. That is the log to
+capture when the overlay behaves oddly — the failures worth diagnosing are about how often an
+unchanged reading is reported as something else, which is invisible in a log that only records
+changes.
+
+**Existing installs:** `ConfigSeed`'s merge adds missing *entries* but never changes a value you
+already have, so both of the defaults below reach **new** installs only. If you ran this plugin
+before, edit `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` by hand:
+
+- `overlay.lingerMs` must be `0`. A non-zero linger auto-hides on a timer, and since an unchanged
+  observation is emitted only once, nothing ever refreshes it — the overlay vanishes that many
+  milliseconds after it appears and does not come back for that rock, whatever the debounce decides.
+  This one silently defeats every other fix above, so check it first.
+- `overlay.template` should be `{cluster}`. The older `{name} x{count}` still renders, but it prints
+  only the primary candidate for an ambiguous total, so a 19200 rock shows `Savrilium x6` with no
+  hint that `Aslarite x5` is equally likely.
 
 ## Build & Test
 

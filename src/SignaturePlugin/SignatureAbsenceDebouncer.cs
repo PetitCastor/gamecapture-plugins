@@ -1,53 +1,88 @@
 namespace SignaturePlugin;
 
 /// <summary>
-/// Debounces the signature overlay's *disappearance* so a single OCR-flicker tick can't hide a badge
-/// that is still on screen — modelled directly on <see cref="RefineryPlugin.SetupDepartureDebouncer"/>,
+/// Debounces the signature overlay's *disappearance* so OCR flicker on this fragile crop can't hide a
+/// badge that is still on screen — modelled directly on <see cref="RefineryPlugin.SetupDepartureDebouncer"/>,
 /// which exists for this same OCR-flicker problem.
 /// </summary>
 /// <remarks>
-/// A match is trusted immediately (not debounced): a single good read shows the overlay right away,
-/// same as the refinery debouncer's entry edge. Only *absence* requires proof — <see cref="ConfirmTicks"/>
-/// consecutive missing ticks with no matching read in between. Any matching read resets the away-streak
-/// to zero, so a value that blips out for a tick or two and comes right back is treated as never having
-/// left.
+/// A match is trusted immediately (not debounced): a single settled read shows the overlay right away,
+/// same as the refinery debouncer's entry edge. Only *absence* requires proof, and only
+/// <see cref="SignatureReading.Blank"/> counts as that proof — see <see cref="SignatureReading"/> for
+/// why an unmatched number is presence, not absence. <see cref="ConfirmTicks"/> consecutive blank ticks
+/// are required, and any non-blank reading resets the streak to zero.
 /// </remarks>
 /// <remarks>
-/// A count of confirming FRAMES, deliberately not a wall-clock window. Replay runs the scan loop flat
-/// out rather than sleeping the real scan interval between frames, so a wall-clock window would turn
-/// "N confirming frames" into "however many frames elapse ≥1.5 s of real OCR time", which depends on
+/// <see cref="StaleTicks"/> is the counterweight to trusting unmatched readings. Holding the overlay on
+/// every reading that isn't blank means a crop that somehow keeps yielding unmatchable digits — a HUD
+/// element drifting under the rect, a table that has gone stale against a game patch — would pin a dead
+/// value on screen forever, since <c>lingerMs</c> is 0 and nothing else ever hides it. This bounds that:
+/// however the ticks are shaped, the overlay cannot outlive its last real match by more than
+/// <see cref="StaleTicks"/> ticks.
+/// </remarks>
+/// <remarks>
+/// Both are counts of confirming FRAMES, deliberately not wall-clock windows. Replay runs the scan loop
+/// flat out rather than sleeping the real scan interval between frames, so a wall-clock window would
+/// turn "N confirming frames" into "however many frames elapse ≥N s of real OCR time", which depends on
 /// machine speed and makes replay non-deterministic. A frame count is invariant across live and replay,
 /// which is the property the debounce needs.
 /// </remarks>
 internal sealed class SignatureAbsenceDebouncer
 {
-    /// <summary>Consecutive missing ticks required before an absence is trusted.</summary>
-    internal const int ConfirmTicks = 3;
+    /// <summary>
+    /// Consecutive blank ticks required before an absence is trusted. At the engine's default 500 ms
+    /// scan interval this is a 3 s grace window. The previous 3 (1.5 s) was chosen on the assumption
+    /// that misreads are independent per frame; they are not — the same font under the same lighting
+    /// misreads the same way for as long as the shot holds, so three in a row was routine and the
+    /// overlay kept dying mid-scan.
+    /// </summary>
+    internal const int ConfirmTicks = 6;
+
+    /// <summary>
+    /// Ticks without a single matched reading after which the overlay is cleared regardless of what
+    /// the crop has been yielding. ~10 s at the default scan interval — long enough that it never
+    /// competes with <see cref="ConfirmTicks"/> during normal flicker, short enough to be a backstop
+    /// rather than a leak.
+    /// </summary>
+    internal const int StaleTicks = 20;
 
     private bool _visible;
-    private int _awayStreak;
+    private int _blankStreak; // consecutive Blank ticks since the last non-blank reading, while visible
+    private int _sinceMatch;  // ticks since the last Matched reading, while visible
 
-    /// <summary>A match was read this tick.</summary>
-    public void ObserveMatch()
+    /// <summary>
+    /// Feeds one tick's reading. Returns true exactly on the tick an absence is confirmed — never on a
+    /// <see cref="SignatureReading.Matched"/> tick, and never twice for the same disappearance.
+    /// </summary>
+    public bool Observe(SignatureReading reading)
     {
-        _visible = true;
-        _awayStreak = 0;
-    }
+        if (reading == SignatureReading.Matched)
+        {
+            _visible = true;
+            _blankStreak = 0;
+            _sinceMatch = 0;
+            return false;
+        }
 
-    /// <summary>No usable reading this tick. Returns true exactly on the tick absence is confirmed.</summary>
-    public bool ObserveMissing()
-    {
         if (!_visible) return false;
 
-        if (++_awayStreak < ConfirmTicks) return false;
+        // Unmatched proves the badge is still drawn, so it resets the blank streak exactly as a match
+        // would — but it does NOT reset _sinceMatch, which is what stops it from holding forever.
+        _blankStreak = reading == SignatureReading.Blank ? _blankStreak + 1 : 0;
+        _sinceMatch++;
 
-        _visible = false;
-        _awayStreak = 0;
+        if (_blankStreak < ConfirmTicks && _sinceMatch < StaleTicks) return false;
+
+        MarkCleared();
         return true;
     }
 
-    /// <summary>Frames were missed; they are not evidence of absence.</summary>
-    public void ResetStreak() => _awayStreak = 0;
+    /// <summary>Frames were missed; they are not evidence of absence, nor of staleness.</summary>
+    public void ResetStreaks()
+    {
+        _blankStreak = 0;
+        _sinceMatch = 0;
+    }
 
     /// <summary>
     /// An out-of-band clear happened outside the confirm-tick gate (a lost session, not a missing OCR
@@ -58,6 +93,7 @@ internal sealed class SignatureAbsenceDebouncer
     public void MarkCleared()
     {
         _visible = false;
-        _awayStreak = 0;
+        _blankStreak = 0;
+        _sinceMatch = 0;
     }
 }
