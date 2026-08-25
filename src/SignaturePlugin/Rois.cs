@@ -29,9 +29,12 @@ public static class Rois
     /// (e.g. a six-digit cluster total) grows left toward the pin — the tighter margin — so watch
     /// that direction first if OCR starts missing again.
     /// </para>
-    /// Scale is the OCR upscale factor — small text needs 2-4.</summary>
+    /// Scale is 6.0, calibrated 2026-08-25 against a 49-sample falsification benchmark that swept
+    /// scale and channel jointly (red channel + Cubic @6.0 scored 47/49 vs. 28/49 at the old 3.0) —
+    /// see https://claude.ai/code/artifact/19c5d1b0-4f71-46d4-ad34-086425b07218. Do not turn this
+    /// back down toward 2-4; that guidance does not hold for this target.</summary>
     public static readonly RoiSubscription Counter =
-        new("counter", new RoiRect(1264, 454, 70, 44), 3.0, RoiKind.Text);
+        new("counter", new RoiRect(1264, 454, 70, 44), 6.0, RoiKind.Text);
 
     /// <summary>A field, not <c>=> [Counter]</c>: the set never changes, and an
     /// expression-bodied property would build a fresh array on every read.</summary>
