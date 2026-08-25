@@ -35,8 +35,17 @@ internal static class Rois
         new("footer", new RoiRect(650, 950, 440, 120), FooterScale, RoiKind.Text);
     public static readonly RoiSubscription Toggles =                                  // SETUP refine toggles
         new("toggles", new RoiRect(1055, 645, 40, 250), 1.0, RoiKind.Pixels);
+    // Height spans the panel's whole list container, not the rows one corpus happened to fill. The
+    // container is fixed — its bottom divider sits at y=799 and the YIELD checksum line below it at
+    // y=811 whether the list holds four rows or ten — so a height sized to the visible rows is a
+    // silent truncation the moment a bigger order comes along. The 210 this replaced covered y=395..605,
+    // which is 5 of the 10 rows a full COMPLETED panel shows (37.6 px pitch), and only cleared the
+    // refinery-confirm corpus because that order had four. 395 covers y=395..790: every row of both
+    // panels (COMPLETED packs 10, PROCESSING 7 at its wider 53 px pitch), stopping short of the divider
+    // so the checksum line can never OCR as an 11th row. A genuinely scrolled list still reads Partial
+    // via ExtractColumnarRows' edge-clip counts, which is the truncation signal that should fire.
     public static readonly RoiSubscription YieldList =                                // PROCESSING/COMPLETED: NAME QUALITY YIELD ...
-        new("yieldList", new RoiRect(650, 395, 470, 210), ListScale, RoiKind.Detailed);
+        new("yieldList", new RoiRect(650, 395, 470, 395), ListScale, RoiKind.Detailed);
     public static readonly RoiSubscription YieldTotal =                               // "YIELD 303 cSCU" checksum line
         new("yieldTotal", new RoiRect(650, 805, 480, 48), HeaderScale, RoiKind.Text);
     public static readonly RoiSubscription Modal =                                    // Confirm Delivery modal

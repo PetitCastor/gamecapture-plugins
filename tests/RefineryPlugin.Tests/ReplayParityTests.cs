@@ -102,6 +102,74 @@ public class ReplayParityTests(ITestOutputHelper output)
     }
 
     /// <summary>
+    /// The regression this corpus exists for: a COMPLETED panel filled to its 10-row capacity.
+    /// </summary>
+    /// <remarks>
+    /// Both monolith corpora top out at four material rows, so both stayed green while
+    /// <see cref="Rois"/>' <c>YieldList</c> height covered only the first five rows of the panel's
+    /// list container — the plugin reported five rows and a "scroll the list" nudge about a list
+    /// that was fully on screen. Asserting all ten rows (rather than a Completeness verdict) is the
+    /// point: the ROI regression is invisible to an aggregate check, exactly as TASK-RFN-01 found
+    /// for the dropped-row bug in the refinery-confirm baseline.
+    /// </remarks>
+    [Fact]
+    public async Task RefineryFullList_corpus_reads_every_visible_row()
+    {
+        var ledger = await RunCorpusAsync("refinery-full-list");
+
+        Verify(ledger, () =>
+        {
+            var order = Assert.Single(ledger.All);
+            Assert.True(order.State >= OrderState.Ready, $"expected Ready or later, got {order.State}");
+
+            // All ten rows reached the ledger — the count is the regression guard, since the old
+            // height stopped at five.
+            Assert.Equal(10, order.RowsSeen);
+
+            // Each row by its (name, quality) identity, with the yield OCR actually returns. Four of
+            // this order's five material names appear twice at different qualities (only GOLD and
+            // TUNGSTEN are singletons), which is why FindMaterial keys on the pair and not the name.
+            AssertYield(FindMaterial(order, "BEXALITE", 302), 3);
+            AssertYield(FindMaterial(order, "BEXALITE", 597), 12);
+            AssertYield(FindMaterial(order, "TORITE", 262), 167);
+            AssertYield(FindMaterial(order, "TORITE", 785), 54);
+            AssertYield(FindMaterial(order, "LINDINIUM", 305), 23);
+            AssertYield(FindMaterial(order, "TUNGSTEN", 530), 24);
+            AssertYield(FindMaterial(order, "ALUMINUM", 318), 117);
+            AssertYield(FindMaterial(order, "ALUMINUM", 511), 8);
+
+            // The two rows whose YIELD cell Windows OCR does not return a word for at all: GOLD#553
+            // (screen shows 0) and LINDINIUM#585 (screen shows 27). Both reach the ledger as the 0
+            // "unknown" sentinel, so only their presence is asserted, not their value.
+            //
+            // Deliberately not chased here, because it is not this rect's doing: a probe of
+            // OcrPipeline's exact crop/scale/red-channel path over this frame drops both cells at the
+            // OLD 210 height too (and at 300, and over a 150-tall crop of those rows alone), so the
+            // miss is ROI-independent. The one lever that recovers LINDINIUM#585 is ListScale 3.5-4.0,
+            // which is shared with SetupList and starts surfacing the per-row icon glyph as stray "e"
+            // name tokens — a change that has to be justified against every corpus, not smuggled in
+            // behind a geometry fix. GOLD#553's 0 is not recovered at any scale from 2.0 to 5.0.
+            Assert.Contains(order.Materials, m => m.Name == "GOLD" && m.Quality == 553);
+            Assert.Contains(order.Materials, m => m.Name == "LINDINIUM" && m.Quality == 585);
+
+            // The checksum line is read from its own ROI, below the list; pinned so a future
+            // YieldList height that swallowed the divider would show up here as well as in the rows.
+            Assert.Equal(440, order.TotalYieldCscu);
+
+            // Not Complete, and correctly so — but the arithmetic is worth stating exactly, because
+            // the obvious reading of it is wrong. The ten rows AS SHOWN sum to 435 against a 440
+            // total, and that 5 cSCU gap is real: this order holds more materials than the container
+            // can display at once. But 5 is INSIDE ChecksumTolerance(10) — a truncation worth less
+            // than about a cSCU per visible row is invisible to that check by construction, so the
+            // hidden rows alone would not fail it. What actually fails here is the two 0-sentinel
+            // yields above: they drop the plugin's own sum to 408 (a gap of 32), and independently
+            // fail the !materials.Any(YieldCscu == 0) half of the clean check. Contrast the ROI bug
+            // this corpus was added for, which faked this same verdict on a fully visible list.
+            Assert.Equal(Completeness.Partial, order.Completeness);
+        });
+    }
+
+    /// <summary>
     /// Replays one corpus through the real engine (spawned) → pipe → SDK → plugin path and hands
     /// back the ledger it produced. The temp ledger is deleted before returning: what the assertions
     /// read is the in-memory state, which is authoritative either way, and no test may touch a real
