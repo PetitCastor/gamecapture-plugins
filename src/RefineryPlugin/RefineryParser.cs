@@ -223,7 +223,7 @@ public static partial class RefineryParser
             }
 
             var name = NormalizeName(string.Join(' ', nameParts));
-            if (name.Length == 0 || numbers.Count == 0)
+            if (name.Length == 0 || numbers.Count == 0 || IsPlaceholderSlot(name))
                 continue;
 
             rows.Add(new ColumnarRow(name, numbers, cluster.Average(w => w.CropRect.CenterY)));
@@ -232,9 +232,33 @@ public static partial class RefineryParser
         return new ColumnarResult(rows, droppedTop, droppedBottom);
     }
 
+    /// <summary>The game's own literal placeholder text for an unfilled SETUP slot, as name tokens.</summary>
+    private static readonly string[] PlaceholderSlotTokens = ["INERT", "MATERIALS"];
+
+    /// <summary>
+    /// Whether a row's name is the placeholder for an unfilled SETUP slot — not a real material, so
+    /// it must not become a tracked row. Matches by one-directional token containment (placeholder
+    /// tokens ⊆ row tokens) rather than exact equality because this row has the same per-row
+    /// toggle-icon glyph (misread as a stray "e", see <see cref="LooksNumeric"/>'s doc comment)
+    /// prefixed onto its name as real material rows do, so the literal text actually parses as e.g.
+    /// "E INERT MATERIALS", not "INERT MATERIALS" alone — akin to (but simpler than, since only one
+    /// side can carry extra tokens here) how <c>OrderMatcher.SameMaterial</c> does bidirectional
+    /// subset matching to reconcile a contaminated name against its clean identity. Confirmed against
+    /// the refinery-confirm corpus (TASK-RFN-01): an
+    /// empty slot's row OCRs this way with an unreadable quality column, and previously only avoided
+    /// polluting the ledger by accident — <see cref="LooksNumeric"/>'s old short-token bug happened to
+    /// swallow the toggle-icon glyph into the numbers column and drop the whole row, which stopped
+    /// being true once that bug was fixed.
+    /// </summary>
+    private static bool IsPlaceholderSlot(string normalizedName)
+    {
+        var tokens = normalizedName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return PlaceholderSlotTokens.All(tokens.Contains);
+    }
+
     // A numeric-column token: the "--" placeholder, or a token that is mostly digits (tolerating the
     // usual OCR digit confusions). Material-name tokens like "(ORE)" or "CORUNDUM" are not.
-    private static bool LooksNumeric(string token)
+    internal static bool LooksNumeric(string token)
     {
         if (token is "--" or "—" or "-")
             return true;
@@ -243,8 +267,12 @@ public static partial class RefineryParser
             return false;
         // Mostly digit-ish (tolerating OCR letter/digit confusions, e.g. "S,OOl" -> 5001). Names like
         // "ORE"/"GOLD"/"IRON" have at most one digit-ish letter over their length, so they fall through.
+        // At length <=2 that "at most one wrong char" tolerance is vacuous — it admits ANY single
+        // character (digit-ish or not) and most two-character tokens — so a stray non-digit OCR glyph
+        // (e.g. a UI icon misread as a lone letter) gets misclassified as numeric, which starves the
+        // name column and drops the whole row. Short tokens require every character to be digit-ish.
         var digitish = core.Count(c => char.IsDigit(c) || "OolIiSsB".Contains(c));
-        return digitish >= core.Length - 1;
+        return core.Length <= 2 ? digitish == core.Length : digitish >= core.Length - 1;
     }
 
     /// <summary>Repairs common OCR digit confusions and parses an integer cSCU value.</summary>
