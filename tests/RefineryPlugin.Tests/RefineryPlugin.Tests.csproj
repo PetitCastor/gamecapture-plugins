@@ -31,13 +31,17 @@
     <PackageReference Include="GameCapture.Sdk.Testing" Version="1.*" />
   </ItemGroup>
 
-  <!-- The monolith's replay corpora this plugin's parity tests drive. Scoped to just these two
+  <!-- The replay corpora this plugin's parity tests drive: the monolith's two, plus
+       refinery-full-list (a COMPLETED panel filled to its 10-row capacity, which neither monolith
+       corpus exercised - both top out at four rows, so both stayed green while Rois.YieldList
+       covered only five). Scoped one corpus per entry
        (not a `corpus\**` catch-all) so another plugin's corpus landing under tests\fixtures\corpus
        doesn't get copied into every other plugin's test output. Copied next to the test assembly
        so ReplayParityTests's relative paths resolve at run time. -->
   <ItemGroup>
     <None Include="..\fixtures\corpus\refinery-confirm\**\*.png" Link="Fixtures\Replay\refinery-confirm\%(RecursiveDir)%(FileName)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="..\fixtures\corpus\refinery-ice-rename\**\*.png" Link="Fixtures\Replay\refinery-ice-rename\%(RecursiveDir)%(FileName)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\fixtures\corpus\refinery-full-list\**\*.png" Link="Fixtures\Replay\refinery-full-list\%(RecursiveDir)%(FileName)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
