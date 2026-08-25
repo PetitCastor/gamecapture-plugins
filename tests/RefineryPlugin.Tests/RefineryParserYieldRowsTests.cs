@@ -183,6 +183,81 @@ public class RefineryParserYieldRowsTests
         Assert.Equal(new int?[] { 262, 50 }, row.Numbers);
     }
 
+    // ---- TASK-RFN-01: a stray short OCR glyph must not corrupt or drop a real row ----
+
+    [Theory]
+    [InlineData("e", false)]     // a UI icon (checkmark) OCR'd as a lone stray letter — real corpus finding
+    [InlineData("n", false)]
+    [InlineData("no", false)]    // one digit-ish char ('o'), one not ('n') — not numeric
+    [InlineData("5", true)]      // a genuine single digit
+    [InlineData("O", true)]      // OCR digit-confusable single char (letter-for-zero)
+    [InlineData("70", true)]
+    [InlineData("7O", true)]     // OCR confusion within a genuine two-digit number
+    [InlineData("--", true)]     // placeholder
+    [InlineData("ORE", false)]
+    [InlineData("GOLD", false)]
+    [InlineData("S,OOl", true)]  // one non-digit-ish char (the comma) tolerated once length > 2
+    public void LooksNumeric_ClassifiesTokens(string token, bool expected)
+        => Assert.Equal(expected, RefineryParser.LooksNumeric(token));
+
+    [Fact]
+    public void ExtractColumnarRows_StrayShortGlyphBeforeName_RowSurvivesWithCorrectNumbers()
+    {
+        // Reproduces a real corpus finding (TASK-RFN-01 diagnostic probe against the engine's
+        // v1.1.17 red-channel OCR output, frame_20260814_174748_765.png of the refinery-confirm
+        // corpus): a UI icon clusters next to the row and OCRs as a lone stray "e". Before the
+        // fix, LooksNumeric("e") was (wrongly) true for any 1-2 character token, so "e" swallowed
+        // the following name token into the numbers column too — both failed to parse as numbers,
+        // nameParts stayed empty, and the whole row (with its correct 262/50 numbers) was silently
+        // dropped. Dropping this one row was what flipped the checksum-based Completeness to
+        // Partial on the real corpus (sum 251 vs. printed total 303). The row's own Name here still
+        // carries the stray token ("E TORITE") — that's expected and fine: OrderMatcher.SameMaterial
+        // (Orders/OrderMatcher.cs) reconciles it against the clean "TORITE" identity already in the
+        // ledger via name-token subset matching, and OrderLedger.MergeMaterial keeps the existing
+        // clean name. What must not happen at this layer is losing the row/numbers entirely.
+        var words = new[]
+        {
+            Word("e", 0, 100), Word("Torite", 70, 100), Word("262", 220, 100), Word("50", 290, 100),
+        };
+
+        var row = Assert.Single(RefineryParser.ExtractColumnarRows(Region(words)).Rows);
+
+        Assert.Contains("TORITE", row.Name);
+        Assert.Equal(new int?[] { 262, 50 }, row.Numbers);
+    }
+
+    [Fact]
+    public void ExtractColumnarRows_UnfilledSetupSlotPlaceholder_IsDropped()
+    {
+        // "INERT MATERIALS" is the game's own literal placeholder for an empty SETUP slot, with an
+        // unreadable quality column (real corpus finding, TASK-RFN-01). It must not become a
+        // tracked material — only real ore rows should reach the ledger.
+        var words = new[]
+        {
+            Word("Inert", 0, 100), Word("Materials", 90, 100), Word("129", 300, 100),
+        };
+
+        var result = RefineryParser.ExtractColumnarRows(Region(words));
+
+        Assert.Empty(result.Rows);
+    }
+
+    [Fact]
+    public void ExtractColumnarRows_PlaceholderSlotWithStrayIconPrefix_IsStillDropped()
+    {
+        // The real corpus reading (frame_20260814_173206_049.png, setupList ROI): the placeholder
+        // row carries the same per-row toggle-icon glyph as real rows do, so it parses as
+        // "E INERT MATERIALS", not "INERT MATERIALS" alone. Exact-string matching missed this.
+        var words = new[]
+        {
+            Word("e", 0, 100), Word("Inert", 90, 100), Word("Materials", 180, 100), Word("129", 350, 100),
+        };
+
+        var result = RefineryParser.ExtractColumnarRows(Region(words));
+
+        Assert.Empty(result.Rows);
+    }
+
     // ---- H6: OCR-garbage 12-digit tokens must never throw an unchecked (int) overflow ----
 
     [Fact]

@@ -30,19 +30,16 @@ public static class Rois
     /// that direction first if OCR starts missing again.
     /// </para>
     /// <para>
-    /// That warning has since come true, and this rect is KNOWN TO BE TOO TIGHT for five-digit
-    /// cluster totals. A live run on 2026-08-24 scanning 21,425 and 19,500 read 17,200 back as
-    /// "7,200" — the leading digit clipped off entirely, not garbled — and rendered the thousands
-    /// comma as "/" or "k" on roughly half of all non-blank ticks, with about four ticks in ten
-    /// blank on a stationary number. SignatureParser now rejects those reads instead of truncating
-    /// them, which stops the plugin acting on nonsense, but the crop is the actual fault. Recalibrate
-    /// against a --save-frames capture of a five- or six-digit badge, growing this rect LEFT first,
-    /// and verify with a direct OcrPipeline probe rather than by eye: a visually plausible crop of
-    /// this badge reads a plausible WRONG number rather than failing loudly.
+    /// That warning has since come true, and this rect was too tight for five-digit cluster
+    /// totals — recalibrated 2026-08-25 (see below) rather than widened, since the root cause was
+    /// OCR channel/scale, not crop size.
     /// </para>
-    /// Scale is the OCR upscale factor — small text needs 2-4.</summary>
+    /// Scale is 6.0, calibrated 2026-08-25 against a 49-sample falsification benchmark that swept
+    /// scale and channel jointly (red channel + Cubic @6.0 scored 47/49 vs. 28/49 at the old 3.0) —
+    /// see https://claude.ai/code/artifact/19c5d1b0-4f71-46d4-ad34-086425b07218. Do not turn this
+    /// back down toward 2-4; that guidance does not hold for this target.</summary>
     public static readonly RoiSubscription Counter =
-        new("counter", new RoiRect(1264, 454, 70, 44), 3.0, RoiKind.Text);
+        new("counter", new RoiRect(1264, 454, 70, 44), 6.0, RoiKind.Text);
 
     /// <summary>A field, not <c>=> [Counter]</c>: the set never changes, and an
     /// expression-bodied property would build a fresh array on every read.</summary>
