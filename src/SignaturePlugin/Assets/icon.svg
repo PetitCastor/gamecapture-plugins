@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <!-- Dark HUD Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19"/>
+      <stop offset="100%" stop-color="#172033"/>
+    </linearGradient>
+
+    <!-- Signal Pulse Wave (Signature Scan) -->
+    <linearGradient id="signalGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="50%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+
+    <!-- Crystalline Ore Fill -->
+    <linearGradient id="oreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#b45309" stop-opacity="0.4"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Base Icon Canvas -->
+  <rect width="256" height="256" rx="56" fill="url(#bgGrad)"/>
+
+  <!-- Background Tech Grid Lines -->
+  <path d="M 32,80 H 224 M 32,128 H 224 M 32,176 H 224" 
+        stroke="#1e293b" stroke-width="2" stroke-dasharray="4 8"/>
+
+  <!-- Raw Asteroid/Ore Polyhedron Geometry -->
+  <polygon points="128,48 184,80 196,144 148,200 92,188 64,120" 
+           fill="url(#oreGrad)" 
+           stroke="#f59e0b" 
+           stroke-width="6" 
+           stroke-linejoin="round"/>
+
+  <!-- Inner Facet Lines for 3D Mineral Look -->
+  <path d="M 128,48 L 128,128 L 196,144 M 128,128 L 92,188 M 128,128 L 64,120" 
+        stroke="#fbbf24" 
+        stroke-width="4" 
+        stroke-opacity="0.6" 
+        stroke-linejoin="round"/>
+
+  <!-- Signature Waveform Overlay (Reading Numerical Spikes) -->
+  <path d="M 32,140 H 70 L 85,110 L 105,170 L 128,70 L 150,155 L 170,120 L 185,140 H 224" 
+        fill="none" 
+        stroke="url(#signalGrad)" 
+        stroke-width="10" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"/>
+
+  <!-- Data Extraction / Scan Nodes -->
+  <circle cx="128" cy="70" r="7" fill="#38bdf8"/>
+  <circle cx="105" cy="170" r="5" fill="#38bdf8"/>
+  <circle cx="150" cy="155" r="5" fill="#38bdf8"/>
+</svg>
