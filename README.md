@@ -10,7 +10,6 @@ defines what to read and what to do with it.
 
 | Plugin | What it tracks |
 | --- | --- |
-<<<<<<< HEAD
 | `MissionPlugin` | Mission-board accepts |
 | `RefineryPlugin` | Refinery work orders |
 | `SignaturePlugin` | Scan signatures |
