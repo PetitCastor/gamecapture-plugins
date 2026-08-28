@@ -14,6 +14,17 @@ Current plugins:
 | `MissionPlugin` | Watches the mission board and emits mission acceptance captures. |
 | `RefineryPlugin` | Tracks refinery work-order state from refinery UI panels. |
 | `SignaturePlugin` | Matches scan signature values to ore, asteroid, or debris metadata. |
+## Getting Plugins
+Each plugin ships as a self-contained `win-x64` zip on this repo's
+[GitHub Releases](https://github.com/PetitCastor/gamecapture-plugins/releases). [`plugins.json`](plugins.json)
+at the repo root is a small catalog — id, name, description, and a stable
+`/releases/latest/download/...` link for each one — so you don't have to hunt the releases page to
+see what's available.
+To use one: download its zip, unzip it, and run the exe next to (or pointed at) a running engine.
+No manual version matching is needed — the engine and plugin negotiate a protocol version at
+connect time and the engine rejects an incompatible plugin automatically (see
+[`COMPATIBILITY.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/COMPATIBILITY.md)
+in the engine repo).
 ## First Rules
 - Keep each plugin as a plain `net10.0` console app. The Windows TFM and capture
   stack stop at the engine.
