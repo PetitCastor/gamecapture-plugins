@@ -10,6 +10,7 @@ defines what to read and what to do with it.
 
 | Plugin | What it tracks |
 | --- | --- |
+<<<<<<< HEAD
 | `MissionPlugin` | Mission-board accepts |
 | `RefineryPlugin` | Refinery work orders |
 | `SignaturePlugin` | Scan signatures |
@@ -18,10 +19,12 @@ To use a released plugin, download its `win-x64` zip from
 [Releases](https://github.com/PetitCastor/gamecapture-plugins/releases), unzip
 it, and run the executable while GameCapture Engine is running.
 
+The [`plugins.json`](plugins.json) catalog lists each plugin's ID, description,
+and direct link to its latest download.
+
 ## Create a plugin
 
 Start with the published template:
-
 ```powershell
 dotnet new install GameCapture.Plugin.Template
 dotnet new gamecapture-plugin -n MyPlugin
