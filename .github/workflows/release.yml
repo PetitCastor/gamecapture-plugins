@@ -89,12 +89,10 @@ jobs:
       - name: Publish selected plugins
         shell: pwsh
         run: |
+          . ./scripts/ReleaseDescriptor.Validate.ps1
           New-Item -ItemType Directory -Path release-assets -Force | Out-Null
-          $projects = @{
-            MissionPlugin = 'src/MissionPlugin'
-            RefineryPlugin = 'src/RefineryPlugin'
-            SignaturePlugin = 'src/SignaturePlugin'
-          }
+          $projects = @{}
+          foreach ($name in $script:AllowedPlugins) { $projects[$name] = "src/$name" }
           $selected = $env:plugins.Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
           $archives = [System.Collections.Generic.List[string]]::new()
           foreach ($plugin in $selected) {

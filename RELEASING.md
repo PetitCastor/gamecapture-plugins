@@ -15,6 +15,13 @@ only as public preview releases until they meet the stable bar.
    plugin's versioned URL in `plugins.json`. Do not use `releases/latest`: it is repository-wide,
    not plugin-wide. Preview releases belong in `plugins.preview.json` only after an engine version
    that supports the opt-in preview catalog has shipped.
+5. Every `plugins.preview.json` entry must set `"channel": "preview"` explicitly, and its
+   `downloadUrl` must pin the exact release tag — previews have no `releases/latest` alias. An entry
+   missing `channel` (or carrying the wrong value) is not merely dropped: the engine's
+   `PluginCatalog.TryParse` rejects the entire preview catalog for every user, so no preview shows
+   up at all. Promoting a plugin to stable must remove its id from `plugins.preview.json` in the
+   same PR that adds it to `plugins.json` — an id present in both is also rejected outright.
+   `scripts/Test-PluginCatalog.ps1` (run in CI on every PR) enforces all of this before merge.
 
 ## Preview testers
 
