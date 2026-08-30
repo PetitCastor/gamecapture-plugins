@@ -18,8 +18,8 @@ To use a released plugin, download its `win-x64` zip from
 [Releases](https://github.com/PetitCastor/gamecapture-plugins/releases), unzip
 it, and run the executable while GameCapture Engine is running.
 
-The [`plugins.json`](plugins.json) catalog lists each plugin's ID, description,
-and direct link to its latest download.
+The [`plugins.json`](plugins.json) catalog lists stable plugins only. Preview builds are public,
+opt-in GitHub prereleases; see [RELEASING.md](RELEASING.md) for their release and testing policy.
 
 ## Create a plugin
 
