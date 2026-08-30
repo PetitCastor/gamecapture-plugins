@@ -16,6 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate plugin catalogs
+        shell: pwsh
+        run: ./scripts/Test-PluginCatalog.ps1
+
+      - name: Release-descriptor validation checks
+        shell: pwsh
+        run: ./scripts/Test-ReleaseDescriptor.Tests.ps1
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:

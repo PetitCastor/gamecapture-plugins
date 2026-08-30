@@ -1,43 +1,55 @@
 name: Release
 
 on:
-  pull_request_target:
-    types: [closed]
-    branches: [master]
+  push:
+    tags: ['v*']
 
-# No nuget-release environment gate here — unlike gamecapture-engine, this repo publishes nothing
-# to nuget.org (SPLIT-MANIFEST.md's "Workflow split plan": "plugins repo has no publish target").
-# Every merged PR targeting master cuts self-contained plugin zips as GitHub release assets. The
-# build job is read-only; only the final release job receives a write-capable token and it never
-# checks out or executes repository code.
+# Releases are deliberately tag-triggered. A merged pull request is buildable source, not a public
+# promise: a maintainer creates a validated tag only after the release PR has landed on master.
 concurrency:
-  group: release-main
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
+
 jobs:
   build:
     name: Build & Package
     runs-on: windows-latest
-    if: github.event.pull_request.merged == true
     permissions:
       contents: read
     outputs:
-      engine_version: ${{ steps.engine_version.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      prerelease: ${{ steps.release.outputs.prerelease }}
     steps:
-      - name: Checkout
+      - name: Checkout tagged source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.ref }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify tag is merged to master
+        shell: pwsh
+        run: |
+          git fetch origin master:refs/remotes/origin/master --no-tags
+          git merge-base --is-ancestor HEAD origin/master
+          if ($LASTEXITCODE -ne 0) { throw "Release tag $env:GITHUB_REF_NAME is not reachable from master." }
+
+      - name: Validate release descriptor
+        id: release
+        shell: pwsh
+        run: |
+          .\scripts\Test-ReleaseDescriptor.ps1 -Tag $env:GITHUB_REF_NAME
+          $manifest = Get-Content ".github/release-manifests/$env:GITHUB_REF_NAME.json" -Raw | ConvertFrom-Json
+          "tag=$($manifest.tag)" >> $env:GITHUB_OUTPUT
+          "prerelease=$([string]($manifest.channel -eq 'preview').ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "plugins=$($manifest.plugins -join ',')" >> $env:GITHUB_ENV
 
       - name: Read pinned engine version
         id: engine_version
         shell: pwsh
         run: |
           $engineVersion = (Get-Content engine-version.txt).Trim()
-          if (-not $engineVersion) {
-            throw "engine-version.txt is empty."
-          }
+          if (-not $engineVersion) { throw "engine-version.txt is empty." }
           "version=$engineVersion" >> $env:GITHUB_OUTPUT
 
       - name: Setup .NET
@@ -45,8 +57,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Same pinned-engine-binary need as ci.yml, so the merge-triggered release re-verifies the
-      # parity suites against the exact engine version this release states it was tested against.
       - name: Download pinned engine release
         shell: pwsh
         env:
@@ -56,26 +66,18 @@ jobs:
           gh release download $engineVersion -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip" -D .
           Expand-Archive -Path "GameCapture.Engine-*-win-x64.zip" -DestinationPath engine
           $enginePath = (Get-ChildItem -Path engine -Filter "GameCapture.Engine.exe" -Recurse | Select-Object -First 1).FullName
-          if (-not $enginePath) {
-            Write-Error "GameCapture.Engine.exe not found after extracting the pinned release."
-            exit 1
-          }
-          echo "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
+          if (-not $enginePath) { throw "GameCapture.Engine.exe not found after extracting the pinned release." }
+          "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
 
-      # Re-verifies rather than trusting the pull request's CI run. These steps run with read-only
-      # contents permission; a repository-controlled build cannot access the release token.
       - name: Restore
         run: dotnet restore GameCapturePlugins.slnx
 
       - name: Build
         run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
 
-      # Match CI's project serialization for the replay tests' Windows OCR engine processes.
       - name: Test
         run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal -m:1
 
-      # Keep the release gate aligned with CI: build success alone cannot catch a plugin coupling
-      # itself to engine/transport internals.
       - name: Plugin boundary grep gate
         shell: bash
         run: |
@@ -83,104 +85,80 @@ jobs:
             echo "::error::Plugin boundary violation — a plugin references an engine/transport internal (listed above)."
             exit 1
           fi
-          echo "Plugin boundary clean: no engine/transport references under src/."
 
-      - name: Publish MissionPlugin
-        run: dotnet publish src/MissionPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/MissionPlugin
-
-      - name: Publish RefineryPlugin
-        run: dotnet publish src/RefineryPlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/RefineryPlugin
-
-      - name: Publish SignaturePlugin
-        run: dotnet publish src/SignaturePlugin -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o publish/SignaturePlugin
-
-      # Named files, not `publish/<plugin>/*`: PublishSingleFile bundles the managed assemblies into
-      # the exe but leaves .pdb files loose, and other publish-layout artifacts don't belong in a
-      # release zip. Stable names let the privileged release job consume these files without
-      # executing anything from the checked-out repository.
-      - name: Archive plugin zips
+      - name: Publish selected plugins
         shell: pwsh
         run: |
-          $plugins = @('MissionPlugin', 'RefineryPlugin', 'SignaturePlugin')
-          foreach ($plugin in $plugins) {
-            $files = "publish/$plugin/$plugin.exe"
-            $missing = $files | Where-Object { -not (Test-Path $_) }
-            if ($missing) { throw "Missing from publish output: $($missing -join ', ')" }
-            Compress-Archive -Path $files -DestinationPath "$plugin-win-x64.zip"
+          . ./scripts/ReleaseDescriptor.Validate.ps1
+          New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+          $projects = @{}
+          foreach ($name in $script:AllowedPlugins) { $projects[$name] = "src/$name" }
+          $selected = $env:plugins.Split(',', [System.StringSplitOptions]::RemoveEmptyEntries)
+          $archives = [System.Collections.Generic.List[string]]::new()
+          foreach ($plugin in $selected) {
+            if (-not $projects.ContainsKey($plugin)) { throw "Unknown plugin selected after validation: $plugin" }
+            dotnet publish $projects[$plugin] -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o "publish/$plugin"
+            $executable = "publish/$plugin/$plugin.exe"
+            if (-not (Test-Path $executable)) { throw "Missing publish output: $executable" }
+            $archive = "$plugin-win-x64.zip"
+            Compress-Archive -Path $executable -DestinationPath "release-assets/$archive"
+            $archives.Add($archive)
           }
+          $archives | Set-Content -Encoding utf8 release-assets.txt
+
+      - name: Write release notes
+        shell: pwsh
+        env:
+          ENGINE_VERSION: ${{ steps.engine_version.outputs.version }}
+        run: |
+          $manifest = Get-Content ".github/release-manifests/$env:GITHUB_REF_NAME.json" -Raw | ConvertFrom-Json
+          @"
+          Tested against gamecapture-engine $env:ENGINE_VERSION (pinned in engine-version.txt).
+
+          $($manifest.notes)
+          "@ | Out-File -Encoding utf8 release-notes.md
 
       - name: Upload release payload
         uses: actions/upload-artifact@v4
         with:
-          name: release-payload-${{ github.event.pull_request.merge_commit_sha }}
+          name: release-payload-${{ github.ref_name }}
           path: |
-            MissionPlugin-win-x64.zip
-            RefineryPlugin-win-x64.zip
-            SignaturePlugin-win-x64.zip
+            release-assets/*-win-x64.zip
+            release-assets.txt
+            release-notes.md
           if-no-files-found: error
           retention-days: 1
 
   release:
     name: Create Release
     runs-on: windows-latest
-    if: github.event.pull_request.merged == true
     needs: build
     permissions:
-      contents: write # gh release create and tag creation; unlisted scopes are disabled.
+      contents: write
     steps:
-      # This job intentionally has no checkout. It only downloads the build payload and invokes
-      # the release API, so repository-controlled source/build code never runs with write access.
       - name: Download release payload
         uses: actions/download-artifact@v4
         with:
-          name: release-payload-${{ github.event.pull_request.merge_commit_sha }}
+          name: release-payload-${{ github.ref_name }}
           path: release-payload
 
-      - name: Determine release version
-        id: release_version
+      - name: Create GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.build.outputs.tag }}
+          PRERELEASE: ${{ needs.build.outputs.prerelease }}
         run: |
-          $tags = gh release list -R $env:GH_REPO --limit 1000 --json tagName | ConvertFrom-Json | ForEach-Object { $_.tagName }
-          $versions = $tags | Where-Object { $_ -match '^v[0-9]+[.][0-9]+[.][0-9]+$' } | ForEach-Object { [version]$_.Substring(1) }
-          if ($versions.Count -eq 0) {
-            $nextVersion = [version]::new(1, 0, 0)
+          $assets = [System.Collections.Generic.List[string]]::new()
+          foreach ($assetName in Get-Content 'release-payload/release-assets.txt') {
+            if ($assetName -notmatch '^[A-Za-z0-9]+-win-x64[.]zip$') { throw "Unsafe release asset name: $assetName" }
+            $asset = Join-Path 'release-payload/release-assets' $assetName
+            if (-not (Test-Path -LiteralPath $asset)) { throw "Missing selected release asset: $assetName" }
+            $assets.Add((Resolve-Path -LiteralPath $asset).Path)
           }
-          else {
-            $latestVersion = $versions | Sort-Object | Select-Object -Last 1
-            $nextVersion = [version]::new($latestVersion.Major, $latestVersion.Minor, $latestVersion.Build + 1)
-          }
-          $tag = "v$nextVersion"
-          "tag=$tag" >> $env:GITHUB_OUTPUT
-
-      # Release notes explicitly name the engine version this release was tested against —
-      # engine-version.txt is the only thing tying a plugins release to a compatible engine
-      # release, since the two repos version independently and there's no shared version train.
-      - name: Write release notes header
-        shell: pwsh
-        env:
-          ENGINE_VERSION: ${{ needs.build.outputs.engine_version }}
-        run: |
-          @"
-          Tested against gamecapture-engine $env:ENGINE_VERSION (pinned in engine-version.txt).
-
-          Mission parity is known-skipped in this build's test run pending an in-game corpus
-          capture, and Signature parity is skipped pending its scan-signature corpus (see the
-          corresponding test skips and [USER ACTION] in the source repo this was split from) —
-          Refinery parity ran for real.
-          "@ | Out-File -Encoding utf8 release-notes-header.md
-
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh release create ${{ steps.release_version.outputs.tag }} `
-            -R $env:GH_REPO `
-            --target ${{ github.event.pull_request.merge_commit_sha }} `
-            "release-payload/MissionPlugin-win-x64.zip" `
-            "release-payload/RefineryPlugin-win-x64.zip" `
-            "release-payload/SignaturePlugin-win-x64.zip" `
-            --notes-file release-notes-header.md --generate-notes
+          if ($assets.Count -eq 0) { throw 'No plugin archives were produced.' }
+          $arguments = @('release', 'create', $env:TAG, '-R', $env:GH_REPO, '--target', $env:GITHUB_SHA, '--notes-file', 'release-payload/release-notes.md')
+          if ($env:PRERELEASE -eq 'true') { $arguments += '--prerelease' }
+          $arguments += $assets
+          & gh @arguments

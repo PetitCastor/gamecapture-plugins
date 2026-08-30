@@ -1,20 +1,8 @@
 [
   {
-    "id": "mission-plugin",
-    "name": "MissionPlugin",
-    "description": "Watches the mission board and emits mission acceptance captures.",
-    "downloadUrl": "https://github.com/PetitCastor/gamecapture-plugins/releases/latest/download/MissionPlugin-win-x64.zip"
-  },
-  {
-    "id": "refinery-plugin",
-    "name": "RefineryPlugin",
-    "description": "Tracks refinery work-order state from refinery UI panels.",
-    "downloadUrl": "https://github.com/PetitCastor/gamecapture-plugins/releases/latest/download/RefineryPlugin-win-x64.zip"
-  },
-  {
     "id": "signature-plugin",
     "name": "SignaturePlugin",
     "description": "Matches scan signature values to ore-cluster metadata.",
-    "downloadUrl": "https://github.com/PetitCastor/gamecapture-plugins/releases/latest/download/SignaturePlugin-win-x64.zip"
+    "downloadUrl": "https://github.com/PetitCastor/gamecapture-plugins/releases/download/v1.0.16/SignaturePlugin-win-x64.zip"
   }
 ]
