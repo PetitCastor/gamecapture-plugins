@@ -14,7 +14,7 @@
   {
     "id": "signature-plugin",
     "name": "SignaturePlugin",
-    "description": "Matches scan signature values to ore, asteroid, or debris metadata.",
+    "description": "Matches scan signature values to ore-cluster metadata.",
     "downloadUrl": "https://github.com/PetitCastor/gamecapture-plugins/releases/latest/download/SignaturePlugin-win-x64.zip"
   }
 ]

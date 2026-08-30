@@ -1,3 +1,4 @@
+using GameCapture.Contracts;
 using GameCapture.Sdk;
 using GameCapture.Sdk.Testing;
 using Xunit;
@@ -68,6 +69,50 @@ public class SignaturePluginTests
         await Read(plugin, services, "3600");
 
         Assert.Single(services.Emitted);
+    }
+
+    [Fact]
+    public async Task Manual_tick_forces_an_observation_and_dumps_the_counter_frame()
+    {
+        RoiRect? requestedRoi = null;
+        string? requestedPrefix = null;
+        var services = new FakePluginServices
+        {
+            DumpFrameHandler = (roi, prefix, _) =>
+            {
+                requestedRoi = roi;
+                requestedPrefix = prefix;
+                return Task.FromResult<string?>("C:\\captures\\counter.png");
+            },
+        };
+        var plugin = new SignaturePlugin();
+
+        await Read(plugin, services, "3600");
+        await plugin.OnManualTickAsync(
+            Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+
+        Assert.Equal([TriggerKind.Auto, TriggerKind.Manual], services.Emitted.Select(record => record.Trigger));
+        Assert.True(requestedRoi.HasValue);
+        Assert.Equal(Rois.Counter.Rect, requestedRoi.Value);
+        Assert.Equal("counter", requestedPrefix);
+        Assert.Contains(services.VerboseLogs, log => log.Contains("frame dumped to C:\\captures\\counter.png"));
+    }
+
+    [Fact]
+    public async Task Manual_tick_logs_a_dump_failure_but_keeps_its_observation()
+    {
+        var services = new FakePluginServices
+        {
+            DumpFrameHandler = (_, _, _) => throw new IOException("no space left on device"),
+        };
+        var plugin = new SignaturePlugin();
+
+        await plugin.OnManualTickAsync(
+            Tick(new TickDataBuilder().Text("counter", "3600").Build(), services), default);
+
+        Assert.Single(services.Emitted);
+        Assert.Equal(TriggerKind.Manual, services.Emitted[0].Trigger);
+        Assert.Contains(services.VerboseLogs, log => log.Contains("frame dump failed: no space left on device"));
     }
 
     [Fact]
