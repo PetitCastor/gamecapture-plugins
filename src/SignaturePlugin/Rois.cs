@@ -34,10 +34,11 @@ public static class Rois
     /// totals — recalibrated 2026-08-25 (see below) rather than widened, since the root cause was
     /// OCR channel/scale, not crop size.
     /// </para>
-    /// Scale is 6.0, calibrated 2026-08-25 against a 49-sample falsification benchmark that swept
-    /// scale and channel jointly (red channel + Cubic @6.0 scored 47/49 vs. 28/49 at the old 3.0) —
-    /// see https://claude.ai/code/artifact/19c5d1b0-4f71-46d4-ad34-086425b07218. Do not turn this
-    /// back down toward 2-4; that guidance does not hold for this target.</summary>
+    /// Scale is 6.0, selected 2026-08-25 from a 49-sample scale/channel sweep (red channel + Cubic
+    /// read 47/49, versus 28/49 at the old 3.0). The sweep itself is not checked in; the shipped
+    /// replay corpus currently has one four-digit frame, so add representative five- and six-digit
+    /// frames before treating this setting as replay-proven for wide readings. Do not turn it back
+    /// down toward 2-4 without that comparison.</summary>
     public static readonly RoiSubscription Counter =
         new("counter", new RoiRect(1264, 454, 70, 44), 6.0, RoiKind.Text);
 

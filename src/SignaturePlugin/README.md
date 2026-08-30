@@ -7,18 +7,14 @@ arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `Game
 
 ## Calibrate The Signature ROI
 
-> **Known limitation — `Rois.Counter` is calibrated for a four-digit reading.** It was measured
-> against `3,400` (Lindinium, one ore). A live run scanning five-digit cluster totals (`21,425`,
-> `19,500`) shows the crop is too tight for them: `17,200` came back as `7,200` with the leading
-> digit clipped off entirely, the thousands comma frequently read as `/` or `k`, and roughly four
-> ticks in ten read blank on a number that was not moving. This is the direction `Rois.Counter`'s
-> own doc comment warns about — a wider reading grows left, toward the pin icon and the tighter
-> margin. Recalibrating needs a `--save-frames` capture of a five- or six-digit badge; the parser
-> and overlay now fail cleanly on the garbage rather than acting on it, but that is damage control,
-> not a fix for the crop.
+> **Calibration status — `Rois.Counter` uses scale 6.0.** The checked-in corpus currently contains
+> one four-digit reference frame, so it is not replay proof for five- or six-digit readings. Capture
+> representative wide-number frames with `--save-frames` before changing the ROI or trusting a new
+> game patch; the parser and overlay fail safely on partial OCR, but that is not a substitute for
+> calibration.
 
-`SignaturePlugin.cs` ships with one placeholder region (`Rois.Counter`) for the mining-mode RS
-signature number. Before trusting replay parity, calibrate that rectangle against your own capture:
+`SignaturePlugin.cs` subscribes to `Rois.Counter`, the mining-mode RS signature number. Before
+trusting replay parity, calibrate that rectangle against your own capture:
 
 1. Get an engine running with `--save-frames`, either a
    [release zip](https://github.com/PetitCastor/gamecapture-engine/releases)
@@ -30,7 +26,8 @@ signature number. Before trusting replay parity, calibrate that rectangle agains
 4. Press the engine's capture hotkey (`engine-config.json`'s `hotkey`, default `Ctrl+Shift+F12`).
 5. Compare the dumped PNG path printed by `--verbose` against `Rois.Counter`'s rectangle. It is
    declared in reference space, 2560x1440, always. Nudge `RoiRect(x, y, width, height)` and `Scale`
-   until the crop lands on the number. Small UI text usually needs a `Scale` of 2-4.
+   until the crop lands on the number. This target currently uses a `Scale` of 6.0; do not lower it
+   without comparing representative captures.
 6. Keep `saveDebugFrames` enabled until manual ticks reliably dump only the signature number.
 
 Full walkthrough: ROI kinds, scale, error handling, session events, testing, config, and CLI are in
@@ -131,8 +128,9 @@ fragile and every wobble used to read as "the badge is gone":
   and because the misread producing it recurs, it kept resetting the true reading's confirmation
   streak — one captured run sat on a stale ore for sixteen seconds that way.
 - **A changed value has to repeat before it is believed.** The first reading of a scan shows
-  instantly, but replacing it takes two consecutive identical readings, and a blank tick in between
-  breaks the run. This is what stops a single slipped digit from renaming the ore mid-scan — 17200 is
+  instantly, but replacing it takes two consecutive identical readings. Blank ticks are neutral and
+  do not restart the challenger, because this crop reads blank frequently while the badge remains on
+  screen. This stops a single slipped digit from renaming the ore mid-scan — 17200 is
   Ice x4 exactly, while 18200 is one 7→8 slip away and sits close to Bexalite x5.
 - **Cluster matching uses an absolute tolerance,** not a percentage of the cluster total. A relative
   window widened exactly where the derived grid is densest, so six-ore clusters were the readings

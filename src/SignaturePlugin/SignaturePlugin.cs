@@ -53,7 +53,6 @@ public sealed class SignaturePlugin : IGameCapturePlugin
     public SignaturePlugin(SignatureTable? table = null) => _table = table ?? SignatureTable.LoadEmbedded();
     public string Name => "SignaturePlugin";
     public IReadOnlyList<RoiSubscription> Rois => SignaturePluginRois.All;
-    public RoiErrorPolicy ErrorPolicy => RoiErrorPolicy.AbortTick;
 
     public Task OnTickAsync(TickContext ctx, CancellationToken ct)
     {
@@ -72,7 +71,11 @@ public sealed class SignaturePlugin : IGameCapturePlugin
             if (png is not null) ctx.Services.LogVerbose($"signature read '{text.Trim()}' — frame dumped to {png}");
         }
         catch (OperationCanceledException) { throw; }
-        catch { }
+        catch (Exception ex)
+        {
+            // Dumping is a calibration aid, not a reason to discard the manual observation.
+            ctx.Services.LogVerbose($"signature read '{text.Trim()}' — frame dump failed: {ex.Message}");
+        }
     }
 
     public void OnSessionEvent(SessionEvent evt)
@@ -221,6 +224,6 @@ public sealed class SignaturePlugin : IGameCapturePlugin
     /// Nullable rather than an empty string so a consumer can test for it without knowing the display
     /// convention.</param>
     private sealed record SignatureEvent(
-        string? Name, string? Kind, double? Signature, int Count, double? Delta,
+        string Name, string Kind, double Signature, int Count, double Delta,
         string? Alternate, int AlternateCount);
 }

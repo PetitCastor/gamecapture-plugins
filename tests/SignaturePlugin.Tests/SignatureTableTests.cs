@@ -255,6 +255,17 @@ public class SignatureTableTests
         Assert.Equal(1, match.AlternateCount);
     }
 
+    [Fact]
+    public void TryMatch_EqualDecimalCandidatesReportBoth()
+    {
+        var table = LoadTable("{\"entries\":[{\"name\":\"First\",\"signature\":100.1},{\"name\":\"Second\",\"signature\":100.3}]}");
+
+        Assert.True(table.TryMatch(100.2, 1, out var match));
+        Assert.Equal("First", match.Name);
+        Assert.Equal("Second", match.AlternateName);
+        Assert.Equal(1, match.AlternateCount);
+    }
+
     // A candidate that is strictly closer than an earlier tie discards it, rather than carrying a
     // runner-up that is no longer equally good.
     [Fact]

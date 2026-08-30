@@ -10,6 +10,9 @@ public sealed class SignatureTable
     private const string FileName = "signature-table.json";
     private const string ResourceName = "SignaturePlugin.Resources.signature-table.json";
     private const int MaximumClusterCount = 6;
+    // JSON decimal values are represented as doubles. This admits the rounding noise from two
+    // equivalent subtractions without confusing genuinely distinct cluster totals for a tie.
+    private const double TieRelativeTolerance = 1e-12;
     private readonly IReadOnlyList<(string Name, double UnitSignature)> _entries;
 
     private SignatureTable(IReadOnlyList<(string Name, double UnitSignature)> entries)
@@ -99,7 +102,7 @@ public sealed class SignatureTable
         var bestResolvedSignature = 0.0;
         var bestCount = 0;
 
-        // The runner-up is only kept while it ties the current best exactly; a strictly better
+        // The runner-up is only kept while it ties the current best; a strictly better
         // candidate later in the walk discards it, which is why it is cleared in that branch too.
         string? tiedName = null;
         var tiedCount = 0;
@@ -111,7 +114,7 @@ public sealed class SignatureTable
                 var resolvedSignature = entry.UnitSignature * count;
                 var absoluteDelta = Math.Abs(signature - resolvedSignature);
 
-                if (absoluteDelta < bestDelta)
+                if (absoluteDelta < bestDelta && !AreEqualDeltas(absoluteDelta, bestDelta))
                 {
                     found = true;
                     bestDelta = absoluteDelta;
@@ -122,7 +125,7 @@ public sealed class SignatureTable
                     tiedName = null;
                     tiedCount = 0;
                 }
-                else if (absoluteDelta == bestDelta && tiedName is null)
+                else if (AreEqualDeltas(absoluteDelta, bestDelta) && tiedName is null)
                 {
                     tiedName = entry.Name;
                     tiedCount = count;
@@ -139,6 +142,10 @@ public sealed class SignatureTable
             signature - bestResolvedSignature, tiedName, tiedCount);
         return true;
     }
+
+    private static bool AreEqualDeltas(double left, double right)
+        => double.IsFinite(left) && double.IsFinite(right)
+            && Math.Abs(left - right) <= Math.Max(1, Math.Max(left, right)) * TieRelativeTolerance;
 
     private static SignatureTable Parse(string json, string source)
     {
