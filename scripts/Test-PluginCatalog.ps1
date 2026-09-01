@@ -32,7 +32,7 @@ function Test-CatalogFile {
 
     $ids = [System.Collections.Generic.HashSet[string]]::new()
     foreach ($entry in $entries) {
-        foreach ($field in @('id', 'name', 'description', 'downloadUrl')) {
+        foreach ($field in @('id', 'name', 'clientName', 'description', 'downloadUrl')) {
             if ([string]::IsNullOrWhiteSpace($entry.$field)) {
                 throw "$($Path): an entry is missing required field '$field'."
             }
