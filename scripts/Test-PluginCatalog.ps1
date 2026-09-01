@@ -3,7 +3,9 @@ $ErrorActionPreference = 'Stop'
 # Validates plugins.json and plugins.preview.json against the shape the engine's PluginCatalog
 # actually enforces (see gamecapture-engine's PluginCatalog.TryParse / CatalogEntry). A catalog PR
 # is hand-edited and never runs the engine's own tests, so this is the only gate standing between a
-# malformed entry and every user's plugin manager.
+# malformed entry and every user's plugin manager. clientName is the exact IPlugin.Name the
+# plugin sends in gRPC Hello.ClientName; it is case-sensitive and must not be inferred from the
+# catalog display name, or the engine cannot match the plugin's active ROI subscriptions.
 #
 # The engine treats a preview catalog entry with no (or a wrong) "channel" value as belonging to the
 # wrong channel and rejects the WHOLE preview catalog fetch — so plugins.preview.json entries MUST
@@ -60,8 +62,42 @@ function Test-CatalogFile {
     return $ids
 }
 
+function Get-DeclaredPluginNames {
+    $pluginNames = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $sourceFiles = Get-ChildItem -Path 'src' -Filter '*.cs' -Recurse -File
+    $pattern = [regex]'public\s+string\s+Name\s*=>\s*"(?<name>[^"]+)"'
+
+    foreach ($file in $sourceFiles) {
+        $content = Get-Content -LiteralPath $file.FullName -Raw
+        foreach ($match in $pattern.Matches($content)) {
+            $name = $match.Groups['name'].Value
+            if (-not [string]::IsNullOrWhiteSpace($name)) {
+                $pluginNames.Add($name) | Out-Null
+            }
+        }
+    }
+
+    if ($pluginNames.Count -eq 0) {
+        throw "No plugin IPlugin.Name declarations were found under src/."
+    }
+
+    return $pluginNames
+}
+
 $stableIds = Test-CatalogFile -Path 'plugins.json' -ExpectedChannel 'stable'
 $previewIds = Test-CatalogFile -Path 'plugins.preview.json' -ExpectedChannel 'preview'
+$declaredPluginNames = Get-DeclaredPluginNames
+
+foreach ($catalogPath in @('plugins.json', 'plugins.preview.json')) {
+    $parsed = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+    $entries = if ($null -eq $parsed) { @() } else { @($parsed) }
+
+    foreach ($entry in $entries) {
+        if (-not $declaredPluginNames.Contains($entry.clientName)) {
+            throw "${catalogPath}: entry '$($entry.id)' has clientName '$($entry.clientName)', but no plugin under src/ declares that exact IPlugin.Name."
+        }
+    }
+}
 
 $collisions = $previewIds | Where-Object { $stableIds.Contains($_) }
 if ($collisions) {
