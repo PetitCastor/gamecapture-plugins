@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "createdAt": "2026-09-05T13:12:19.2550848+00:00",
+  "updatedAt": "2026-09-05T13:12:19.2570754+00:00",
+  "description": "Initial baseline created by 'slopwatch init' on 2026-09-05 13:12:19 UTC",
+  "entries": [
+    {
+      "hash": "1e8944fce3e4460c",
+      "ruleId": "SW001",
+      "filePath": "tests/MissionPlugin.Tests/ReplayParityTests.cs",
+      "lineNumber": 32,
+      "codeSnippet": "Fact(Skip = \"awaiting mission corpus — capture via --save-frames, accept one mission, ~5-8 frames\")",
+      "message": "Test method 'MissionAccept_corpus_emitsExactlyOneAutoRecord' is disabled: awaiting mission corpus — capture via --save-frames, accept one mission, ~5-8 frames",
+      "baselinedAt": "2026-09-05T13:12:19.2569933+00:00"
+    },
+    {
+      "hash": "06d4319f0b0e11c6",
+      "ruleId": "SW003",
+      "filePath": "tests/RefineryPlugin.Tests/OrderLedgerTests.cs",
+      "lineNumber": 30,
+      "codeSnippet": "catch\r\n        {\r\n            // Best-effort cleanup; a leaked temp dir must not fail the suite.\r\n        }",
+      "message": "Empty catch block swallows exceptions without handling",
+      "baselinedAt": "2026-09-05T13:12:19.2570751+00:00"
+    }
+  ]
+}
