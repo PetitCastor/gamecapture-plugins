@@ -1,6 +1,6 @@
 {
   "configVersion": 1,
-  "pipeName": "GameCapture.Engine",
+  "pipeName": "OCRX.Engine",
   "ledgerEnabled": true,
   "ledgerPath": "",
   "saveDebugFrames": false

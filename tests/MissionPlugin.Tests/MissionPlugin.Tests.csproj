@@ -23,11 +23,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\MissionPlugin\MissionPlugin.csproj" />
-    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
-    <!-- Ticks are built through GameCapture.Sdk.Testing's public TickDataBuilder now, not the wire
+    <PackageReference Include="Ocrx.Sdk" Version="2.0.0" />
+    <!-- Ticks are built through Ocrx.Sdk.Testing's public TickDataBuilder now, not the wire
          type directly, but RoiRect (Rois.Pane.Rect assertions) still comes from here. -->
-    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
-    <PackageReference Include="GameCapture.Sdk.Testing" Version="1.*" />
+    <PackageReference Include="Ocrx.Contracts" Version="2.0.0" />
+    <PackageReference Include="Ocrx.Sdk.Testing" Version="2.0.0" />
   </ItemGroup>
 
   <!-- The mission-accept corpus ReplayParityTests awaits (TASK-13): wired ahead of the capture so

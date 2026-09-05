@@ -1,5 +1,5 @@
-using GameCapture.Contracts;
-using GameCapture.Sdk;
+using Ocrx.Contracts;
+using Ocrx.Sdk;
 
 namespace SignaturePlugin;
 

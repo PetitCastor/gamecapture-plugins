@@ -1,7 +1,7 @@
 using System.Text;
-using GameCapture.Contracts;
+using Ocrx.Contracts;
 using RefineryPlugin.Orders;
-using GameCapture.Sdk;
+using Ocrx.Sdk;
 
 namespace RefineryPlugin;
 
@@ -366,7 +366,7 @@ public sealed class RefineryLogic
     /// Whether the engine flagged this ROI as failed on this tick. An errored ROI is not a blank one:
     /// <c>Text()</c> answers empty either way, and every caller here has to treat "could not read" as
     /// "do nothing", never as an observation. Reporting the failure — once per change, not per tick —
-    /// is the host's job now (<see cref="GameCapture.Sdk.RoiErrorPolicy.SkipErrored"/>'s latch), so this is
+    /// is the host's job now (<see cref="Ocrx.Sdk.RoiErrorPolicy.SkipErrored"/>'s latch), so this is
     /// a pure predicate.
     /// </summary>
     private static bool RoiFailed(TickData tick, RoiId roiId)

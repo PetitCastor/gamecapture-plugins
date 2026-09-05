@@ -1,5 +1,5 @@
-using GameCapture.Sdk;
+using Ocrx.Sdk;
 
 var config = PluginConfig.Load<MissionPluginConfig>(UserConfig.Ensure());
-return await GameCapturePluginHost.RunAsync(new MissionPlugin.MissionPlugin(), args,
+return await OcrxPluginHost.RunAsync(new MissionPlugin.MissionPlugin(), args,
     new PluginHostOptions { Config = config });

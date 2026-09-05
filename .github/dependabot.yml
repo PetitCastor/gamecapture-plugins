@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # GameCapture.Contracts / .Sdk / .Sdk.Testing arrive here as PackageReference — Dependabot opens
+  # Ocrx.Contracts / .Sdk / .Sdk.Testing arrive here as PackageReference — Dependabot opens
   # a PR whenever a new SDK version is published to nuget.org. Weekly, not daily: these three move
   # together on the engine repo's own release cadence, not per-commit, so a daily check would mostly
   # find nothing. Engine pin bumps (engine-version.txt) are NOT covered by this — that file isn't a

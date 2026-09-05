@@ -63,25 +63,25 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $engineVersion = (Get-Content engine-version.txt).Trim()
-          gh release download $engineVersion -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip" -D .
-          Expand-Archive -Path "GameCapture.Engine-*-win-x64.zip" -DestinationPath engine
-          $enginePath = (Get-ChildItem -Path engine -Filter "GameCapture.Engine.exe" -Recurse | Select-Object -First 1).FullName
-          if (-not $enginePath) { throw "GameCapture.Engine.exe not found after extracting the pinned release." }
-          "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
+          gh release download $engineVersion -R PetitCastor/ocrx-releases -p "Ocrx.Engine-*-win-x64.zip" -D .
+          Expand-Archive -Path "Ocrx.Engine-*-win-x64.zip" -DestinationPath engine
+          $enginePath = (Get-ChildItem -Path engine -Filter "Ocrx.Engine.exe" -Recurse | Select-Object -First 1).FullName
+          if (-not $enginePath) { throw "Ocrx.Engine.exe not found after extracting the pinned release." }
+          "OCRX_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
 
       - name: Restore
-        run: dotnet restore GameCapturePlugins.slnx
+        run: dotnet restore OcrxPlugins.slnx
 
       - name: Build
-        run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
+        run: dotnet build OcrxPlugins.slnx --no-restore -c Release
 
       - name: Test
-        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal -m:1
+        run: dotnet test OcrxPlugins.slnx --no-build -c Release --verbosity normal -m:1
 
       - name: Plugin boundary grep gate
         shell: bash
         run: |
-          if rg -n -g '*.cs' "using Grpc|RpcException|GameCapture\.Contracts\.Proto|GameCapture\.Engine" src/; then
+          if rg -n -g '*.cs' "using Grpc|RpcException|Ocrx\.Contracts\.Proto|Ocrx\.Engine" src/; then
             echo "::error::Plugin boundary violation — a plugin references an engine/transport internal (listed above)."
             exit 1
           fi
@@ -113,7 +113,7 @@ jobs:
         run: |
           $manifest = Get-Content ".github/release-manifests/$env:GITHUB_REF_NAME.json" -Raw | ConvertFrom-Json
           @"
-          Tested against gamecapture-engine $env:ENGINE_VERSION (pinned in engine-version.txt).
+          Tested against OCRX engine $env:ENGINE_VERSION (pinned in engine-version.txt).
 
           $($manifest.notes)
           "@ | Out-File -Encoding utf8 release-notes.md

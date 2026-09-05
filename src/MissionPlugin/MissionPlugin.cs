@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
-using GameCapture.Contracts;
-using GameCapture.Sdk;
+using Ocrx.Contracts;
+using Ocrx.Sdk;
 
 // The class below shares its name with this namespace, which shadows the static Rois holder for
 // any unqualified reference inside it (member lookup wins over enclosing-namespace lookup) — this
@@ -35,7 +35,7 @@ public static class Rois
 /// when it increments (or on manual hotkey), reads the mission-details pane and emits the
 /// raw text. Parsing to structured fields is a later phase.
 /// </summary>
-public sealed partial class MissionPlugin : IGameCapturePlugin
+public sealed partial class MissionPlugin : IOcrxPlugin
 {
     [GeneratedRegex(@"Accepted\s*\(?\s*(\d+)\s*/\s*(\d+)\s*\)?", RegexOptions.IgnoreCase)]
     private static partial Regex AcceptedCounter();
@@ -47,7 +47,7 @@ public sealed partial class MissionPlugin : IGameCapturePlugin
 
     public IReadOnlyList<RoiSubscription> Rois => MissionRois.All;
 
-    // Explicit even though it matches IGameCapturePlugin's own default: replaces the monolith's
+    // Explicit even though it matches IOcrxPlugin's own default: replaces the monolith's
     // silent-ignore of a failed "tab" region (an OCR error used to read as "counter gone",
     // resetting accepted-count state on a transient engine hiccup). Under AbortTick the host
     // never calls OnTickAsync at all while "tab" is failed, so the state-preserving branch in

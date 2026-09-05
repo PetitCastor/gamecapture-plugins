@@ -2,7 +2,7 @@
   "schemaVersion": 3,
   "gamePatch": "4.9",
   "dataQuality": "community-reference",
-  "notes": "Each entry is the signature of one ore. The plugin derives cluster signatures by multiplying it by counts one through six. Verify against the live game after patches. On first run the plugin copies this table to %LOCALAPPDATA%\\GameCapture\\SignaturePlugin\\signature-table.json, which users may edit.",
+  "notes": "Each entry is the signature of one ore. The plugin derives cluster signatures by multiplying it by counts one through six. Verify against the live game after patches. On first run the plugin copies this table to %LOCALAPPDATA%\\OCRX\\SignaturePlugin\\signature-table.json, which users may edit.",
   "source": {
     "name": "SC Mining Signatures v.1",
     "url": "https://docs.google.com/spreadsheets/d/1QOw9yAc20l88ih4yXft_ev1MPbar_3m9Xk7AXJ1VgKI/edit?gid=1033080128",

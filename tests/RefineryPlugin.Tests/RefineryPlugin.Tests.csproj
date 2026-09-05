@@ -23,12 +23,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\RefineryPlugin\RefineryPlugin.csproj" />
-    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
-    <!-- Ticks are built through GameCapture.Sdk.Testing's public TickDataBuilder now, not the SDK's
-         internal TickData.From (the InternalsVisibleTo grant that died with TASK-11). GameCapture.Contracts
+    <PackageReference Include="Ocrx.Sdk" Version="2.0.0" />
+    <!-- Ticks are built through Ocrx.Sdk.Testing's public TickDataBuilder now, not the SDK's
+         internal TickData.From (the InternalsVisibleTo grant that died with TASK-11). Ocrx.Contracts
          still comes in directly for RoiRect/RectF geometry in the fabricated OCR word boxes. -->
-    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
-    <PackageReference Include="GameCapture.Sdk.Testing" Version="1.*" />
+    <PackageReference Include="Ocrx.Contracts" Version="2.0.0" />
+    <PackageReference Include="Ocrx.Sdk.Testing" Version="2.0.0" />
   </ItemGroup>
 
   <!-- The replay corpora this plugin's parity tests drive: the monolith's two, plus

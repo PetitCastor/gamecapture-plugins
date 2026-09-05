@@ -5,7 +5,7 @@ namespace SignaturePlugin;
 /// <summary>Data-driven mapping from one-ore RS signatures to ore clusters.</summary>
 public sealed class SignatureTable
 {
-    private const string ConfigDirectoryName = "GameCapture";
+    private const string ConfigDirectoryName = "OCRX";
     private const string PluginDirectoryName = "SignaturePlugin";
     private const string FileName = "signature-table.json";
     private const string ResourceName = "SignaturePlugin.Resources.signature-table.json";

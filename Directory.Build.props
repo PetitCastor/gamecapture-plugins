@@ -1,6 +1,6 @@
 <Project>
 
-  <!-- Minimal on purpose (TASK-23, per TASK-21 rehearsal note 2): this repo consumes GameCapture as
+  <!-- Minimal on purpose (TASK-23, per TASK-21 rehearsal note 2): this repo consumes Ocrx as
        packages, it doesn't publish any of its own, so it skips the engine repo's MinVer/SourceLink/
        IsPackable machinery entirely. Without at least Nullable+ImplicitUsings set repo-wide, both
        plugin projects fail to build (60 CS0246s — Task, CancellationToken, IReadOnlyList<>, etc. all

@@ -1,5 +1,5 @@
 using System.Text.Json.Nodes;
-using GameCapture.Sdk;
+using Ocrx.Sdk;
 using Xunit;
 
 namespace SignaturePlugin.Tests;
@@ -39,7 +39,7 @@ public class ConfigDefaultsTests : IDisposable
     /// </summary>
     private const string LegacyConfig = """
         {
-          "pipeName": "GameCapture.Engine",
+          "pipeName": "OCRX.Engine",
           "saveDebugFrames": false,
           "outputs": [
             { "type": "json", "path": "captures/signatures.jsonl", "dedupeOnChange": true, "recordClears": true }

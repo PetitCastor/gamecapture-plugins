@@ -1,6 +1,6 @@
 using System.Text.Json;
-using GameCapture.Sdk;
-using GameCapture.Sdk.Testing;
+using Ocrx.Sdk;
+using Ocrx.Sdk.Testing;
 using Xunit;
 
 namespace SignaturePlugin.Tests;
@@ -20,9 +20,9 @@ public class ReplayParityTests
     private const string Manifest = "manifest.json";
 
     /// <summary>
-    /// Parity smoke test: spawns a real GameCapture.Engine.exe replaying a PNG corpus and drives
-    /// this plugin through its real GameCapturePluginHost path. Needs GAMECAPTURE_ENGINE_PATH
-    /// pointed at a built or unpacked GameCapture.Engine.exe and a Windows OCR language pack.
+    /// Parity smoke test: spawns a real Ocrx.Engine.exe replaying a PNG corpus and drives
+    /// this plugin through its real OcrxPluginHost path. Needs OCRX_ENGINE_PATH
+    /// pointed at a built or unpacked Ocrx.Engine.exe and a Windows OCR language pack.
     /// </summary>
     [Fact]
     [Trait("Category", "Integration")]

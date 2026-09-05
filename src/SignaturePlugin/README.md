@@ -1,9 +1,9 @@
 # SignaturePlugin
 
-A [GameCapture](https://github.com/PetitCastor/gamecapture-engine) plugin: a console process that
+A [OCRX](https://ocrx.org) plugin: a console process that
 declares screen regions (ROIs) and what to do with the OCR result each time a tick carrying them
-arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `GameCapturePluginHost`
-(from `GameCapture.Sdk`) owns connecting, subscribing, reconnecting, and shutdown.
+arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `OcrxPluginHost`
+(from `Ocrx.Sdk`) owns connecting, subscribing, reconnecting, and shutdown.
 
 ## Calibrate The Signature ROI
 
@@ -17,9 +17,9 @@ arrives. It never captures a frame, never runs OCR, and never speaks gRPC; `Game
 trusting replay parity, calibrate that rectangle against your own capture:
 
 1. Get an engine running with `--save-frames`, either a
-   [release zip](https://github.com/PetitCastor/gamecapture-engine/releases)
-   (`GameCapture.Engine-vX.Y.Z-win-x64.zip`) or a clone of the engine repo built locally.
-2. Set `"saveDebugFrames": true` in `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json`. The engine saves full replay frames;
+   [release zip](https://github.com/PetitCastor/ocrx-releases/releases)
+   (`Ocrx.Engine-vX.Y.Z-win-x64.zip`) or a clone of the engine repo built locally.
+2. Set `"saveDebugFrames": true` in `%LOCALAPPDATA%\OCRX\SignaturePlugin\config.json`. The engine saves full replay frames;
    `saveDebugFrames` saves the cropped ROI dumps used to tune the rectangle.
 3. Run the plugin with `--verbose` against the running engine. In game, open scan mode with a
    known ore, asteroid, or debris signature visible.
@@ -32,7 +32,7 @@ trusting replay parity, calibrate that rectangle against your own capture:
 
 Full walkthrough: ROI kinds, scale, error handling, session events, testing, config, and CLI are in
 the hosted plugin-authoring guide:
-[`docs/PLUGIN-AUTHORING.md`](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md).
+[`docs/PLUGIN-AUTHORING.md`](https://github.com/PetitCastor/ocrx-sdk/blob/master/docs/PLUGIN-AUTHORING.md).
 
 ## Replay Corpus
 
@@ -65,21 +65,21 @@ count of the *same* ore (e.g. a doubled signature) pass unnoticed, since matchin
 signature x count 1-6. Omit them for a hand-labelled frame where only the ore name is known.
 
 The test project links those files to `Fixtures/Replay/scan-signature/` in the test output. Point
-`GAMECAPTURE_ENGINE_PATH` at a built or unpacked `GameCapture.Engine.exe` and run the `Integration`
+`OCRX_ENGINE_PATH` at a built or unpacked `Ocrx.Engine.exe` and run the `Integration`
 test. It loads the embedded default table, replays each manifest-labelled PNG as its own one-frame
 corpus, and asserts the emitted observation against the manifest. It also checks that every copied
 PNG has exactly one manifest entry.
 
 On first launch, the plugin creates a user-editable default table at
-`%LOCALAPPDATA%\GameCapture\SignaturePlugin\signature-table.json`. It preserves that file on
+`%LOCALAPPDATA%\OCRX\SignaturePlugin\signature-table.json`. It preserves that file on
 later launches, so edit it when captured measurements disagree with the shipped defaults. Update
 `Resources/signature-table.json` in the same change only when the new values should become the
 default for future users; note the source or patch context in the PR body.
 
 ## Output
 
-The default config created at `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` appends every
-signature observation to `captures/signatures.jsonl`, beside that config file. Each observation line is one GameCapture
+The default config created at `%LOCALAPPDATA%\OCRX\SignaturePlugin\config.json` appends every
+signature observation to `captures/signatures.jsonl`, beside that config file. Each observation line is one OCRX
 record whose `rawText` is the structured signature JSON emitted by this plugin. Repeated unchanged
 observations are de-duplicated; the cleared record is retained as `kind: "Cleared"` with empty
 `rawText` so a consumer can remove stale state.
@@ -102,7 +102,7 @@ printing only the winner of it would be a confident wrong answer.
 
 No data leaves the machine: the JSON sink is a local file and the overlay is a local window.
 Change the `outputs` array in that local `config.json` to disable either (`[]`) or choose another supported sink;
-the [plugin-authoring guide's output section](https://github.com/PetitCastor/gamecapture-engine/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
+the [plugin-authoring guide's output section](https://github.com/PetitCastor/ocrx-sdk/blob/master/docs/PLUGIN-AUTHORING.md#outputs-sinks)
 lists the JSON, CSV, HTTP, and optional overlay configurations.
 
 A config file written before the overlay existed does not have that entry, and earlier versions
@@ -159,7 +159,7 @@ changes.
 
 **Existing installs:** `ConfigSeed`'s merge adds missing *entries* but never changes a value you
 already have, so both of the defaults below reach **new** installs only. If you ran this plugin
-before, edit `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json` by hand:
+before, edit `%LOCALAPPDATA%\OCRX\SignaturePlugin\config.json` by hand:
 
 - `overlay.lingerMs` must be `0`. A non-zero linger auto-hides on a timer, and since an unchanged
   observation is emitted only once, nothing ever refreshes it — the overlay vanishes that many
@@ -176,7 +176,7 @@ dotnet build
 dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj --filter "Category!=Integration"
 ```
 
-The one test tagged `Integration` needs `GAMECAPTURE_ENGINE_PATH` and a Windows OCR language pack;
+The one test tagged `Integration` needs `OCRX_ENGINE_PATH` and a Windows OCR language pack;
 run with `dotnet test tests/SignaturePlugin.Tests/SignaturePlugin.Tests.csproj` (no filter) once
 both are available.
 
@@ -186,5 +186,5 @@ both are available.
 dotnet run --project . -- --verbose
 ```
 
-Needs a `GameCapture.Engine` running first, listening on the pipe name in `%LOCALAPPDATA%\GameCapture\SignaturePlugin\config.json`
+Needs `Ocrx.Engine.exe` running first, listening on the `OCRX.Engine` pipe configured in `%LOCALAPPDATA%\OCRX\SignaturePlugin\config.json`
 (`pipeName`, must match the engine's).

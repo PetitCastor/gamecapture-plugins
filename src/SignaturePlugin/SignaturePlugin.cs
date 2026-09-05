@@ -1,11 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
-using GameCapture.Sdk;
+using Ocrx.Sdk;
 using SignaturePluginRois = global::SignaturePlugin.Rois;
 
 namespace SignaturePlugin;
 
-public sealed class SignaturePlugin : IGameCapturePlugin
+public sealed class SignaturePlugin : IOcrxPlugin
 {
     /// <summary>
     /// How far an observed signature may sit from a derived cluster total and still be that cluster,

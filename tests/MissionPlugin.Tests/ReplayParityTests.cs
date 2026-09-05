@@ -1,5 +1,5 @@
-using GameCapture.Sdk;
-using GameCapture.Sdk.Testing;
+using Ocrx.Sdk;
+using Ocrx.Sdk.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -16,7 +16,7 @@ public class ReplayParityCollection;
 
 /// <summary>
 /// The acceptance gate RefineryPlugin already has (see <c>RefineryPlugin.Tests.ReplayParityTests</c>):
-/// the engine replaying a real corpus through the plugin's own <see cref="GameCapturePluginHost"/> path,
+/// the engine replaying a real corpus through the plugin's own <see cref="OcrxPluginHost"/> path,
 /// asserted against what a human capture is known to produce. MissionPlugin never had one — the
 /// monolith shipped mission tracking without a corpus to pin it against, so this is new rather than
 /// ported.

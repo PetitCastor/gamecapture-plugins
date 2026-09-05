@@ -1,6 +1,6 @@
-using GameCapture.Contracts;
-using GameCapture.Sdk;
-using GameCapture.Sdk.Testing;
+using Ocrx.Contracts;
+using Ocrx.Sdk;
+using Ocrx.Sdk.Testing;
 using Xunit;
 
 namespace MissionPlugin.Tests;

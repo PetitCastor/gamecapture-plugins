@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 # Validates plugins.json and plugins.preview.json against the shape the engine's PluginCatalog
-# actually enforces (see gamecapture-engine's PluginCatalog.TryParse / CatalogEntry). A catalog PR
+# actually enforces (see ocrx-engine's PluginCatalog.TryParse / CatalogEntry). A catalog PR
 # is hand-edited and never runs the engine's own tests, so this is the only gate standing between a
 # malformed entry and every user's plugin manager. clientName is the exact IPlugin.Name the
 # plugin sends in gRPC Hello.ClientName; it is case-sensitive and must not be inferred from the

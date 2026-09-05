@@ -1,4 +1,4 @@
-using GameCapture.Sdk;
+using Ocrx.Sdk;
 
 internal static class UserConfig
 {

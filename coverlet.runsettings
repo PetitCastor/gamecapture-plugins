@@ -4,7 +4,7 @@
   "duplicated files" addendum) as a starting point, pruned down to what this repo actually needs.
   Of the mono-repo's ten ExcludeByFile globs, nine matched only engine-only files (CaptureInterop,
   MonitorCapture, LiveFrameSource, FrameSaver, EngineConfig, ConsoleSink, NamedPipeChannel,
-  MetricsSampler, MetricsReporter) — this repo consumes GameCapture.Engine as a package and never
+  MetricsSampler, MetricsReporter) — this repo consumes OCRX Engine as a package and never
   has those files locally, so they'd be harmless no-op globs. Only Program.cs (each plugin's entry
   point) applies here.
 -->

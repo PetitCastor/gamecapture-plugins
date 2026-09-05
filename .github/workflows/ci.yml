@@ -29,9 +29,9 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      # Pinned per 00-OVERVIEW.md's "Plugins-repo CI" decision: this repo consumes GameCapture.Engine
-      # as a released binary, never a source checkout. GAMECAPTURE_ENGINE_PATH is what
-      # GameCapture.Sdk.Testing's EngineLocator.Resolve() reads (see ReplayParityTests in both test
+      # Pinned per 00-OVERVIEW.md's "Plugins-repo CI" decision: this repo consumes Ocrx.Engine
+      # as a released binary, never a source checkout. OCRX_ENGINE_PATH is what
+      # Ocrx.Sdk.Testing's EngineLocator.Resolve() reads (see ReplayParityTests in both test
       # projects) to spawn the real engine for parity comparisons.
       - name: Download pinned engine release
         shell: pwsh
@@ -39,20 +39,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $engineVersion = (Get-Content engine-version.txt).Trim()
-          gh release download $engineVersion -R PetitCastor/gamecapture-engine -p "GameCapture.Engine-*-win-x64.zip" -D .
-          Expand-Archive -Path "GameCapture.Engine-*-win-x64.zip" -DestinationPath engine
-          $enginePath = (Get-ChildItem -Path engine -Filter "GameCapture.Engine.exe" -Recurse | Select-Object -First 1).FullName
+          gh release download $engineVersion -R PetitCastor/ocrx-releases -p "Ocrx.Engine-*-win-x64.zip" -D .
+          Expand-Archive -Path "Ocrx.Engine-*-win-x64.zip" -DestinationPath engine
+          $enginePath = (Get-ChildItem -Path engine -Filter "Ocrx.Engine.exe" -Recurse | Select-Object -First 1).FullName
           if (-not $enginePath) {
-            Write-Error "GameCapture.Engine.exe not found after extracting the pinned release."
+            Write-Error "Ocrx.Engine.exe not found after extracting the pinned release."
             exit 1
           }
-          echo "GAMECAPTURE_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
+          echo "OCRX_ENGINE_PATH=$enginePath" >> $env:GITHUB_ENV
 
       - name: Restore
-        run: dotnet restore GameCapturePlugins.slnx
+        run: dotnet restore OcrxPlugins.slnx
 
       - name: Build
-        run: dotnet build GameCapturePlugins.slnx --no-restore -c Release
+        run: dotnet build OcrxPlugins.slnx --no-restore -c Release
 
       # Runs both plugins' unit suites plus the Refinery replay-parity tests against the pinned
       # engine binary above. Mission parity is a real test in this suite, not omitted — it is
@@ -62,7 +62,7 @@ jobs:
       # Serialize test projects: xUnit collections cannot coordinate the Windows OCR engine
       # processes spawned by separate test assemblies.
       - name: Test
-        run: dotnet test GameCapturePlugins.slnx --no-build -c Release --verbosity normal -m:1
+        run: dotnet test OcrxPlugins.slnx --no-build -c Release --verbosity normal -m:1
 
       # A plugin owns parsing and nothing else: it must not name a transport type (Grpc,
       # RpcException), the wire proto namespace, or the engine assembly. `dotnet build` cannot catch
@@ -73,8 +73,22 @@ jobs:
       - name: Plugin boundary grep gate
         shell: bash
         run: |
-          if rg -n -g '*.cs' "using Grpc|RpcException|GameCapture\.Contracts\.Proto|GameCapture\.Engine" src/; then
+          if rg -n -g '*.cs' "using Grpc|RpcException|Ocrx\.Contracts\.Proto|Ocrx\.Engine" src/; then
             echo "::error::Plugin boundary violation — a plugin references an engine/transport internal (listed above)."
             exit 1
           fi
           echo "Plugin boundary clean: no engine/transport references under src/."
+
+      - name: Legacy identity gate
+        shell: bash
+        run: |
+          if rg -n -i "gamecapture" --glob '!bin/**' --glob '!obj/**' .; then
+            echo "::error::Stale GameCapture identity found."
+            exit 1
+          fi
+
+      - name: Restore repository tools
+        run: dotnet tool restore
+
+      - name: Slopwatch
+        run: dotnet slopwatch analyze -d .

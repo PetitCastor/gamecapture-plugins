@@ -12,9 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GameCapture.Sdk" Version="1.*" />
-    <PackageReference Include="GameCapture.Contracts" Version="1.*" />
-    <PackageReference Include="GameCapture.Sdk.Overlay" Version="1.*" />
+    <PackageReference Include="Ocrx.Sdk" Version="2.0.0" />
+    <PackageReference Include="Ocrx.Contracts" Version="2.0.0" />
+    <PackageReference Include="Ocrx.Sdk.Overlay" Version="2.0.0" />
   </ItemGroup>
 
   <ItemGroup>

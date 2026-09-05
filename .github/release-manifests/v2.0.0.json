@@ -1,0 +1,8 @@
+{
+  "tag": "v2.0.0",
+  "channel": "stable",
+  "plugins": [
+    "SignaturePlugin"
+  ],
+  "notes": "First OCRX release. SignaturePlugin is the sole promoted stable beta plugin and was replay-tested against OCRX Engine v2.0.0."
+}
